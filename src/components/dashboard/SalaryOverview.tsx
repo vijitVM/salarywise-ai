@@ -2,11 +2,9 @@
 import { useState } from 'react';
 import { useSalaryData } from './salary/useSalaryData';
 import { useSalaryCalculations } from './salary/useSalaryCalculations';
-import { useSalaryDelayNotifications } from '@/hooks/useSalaryDelayNotifications';
 import { SalaryStatsCards } from './salary/SalaryStatsCards';
 import { SalaryRecordsList } from './salary/SalaryRecordsList';
 import { SalaryInsightsCards } from './salary/SalaryInsightsCards';
-import { SalaryNotificationSettings } from './salary/SalaryNotificationSettings';
 import { format } from 'date-fns';
 
 export const SalaryOverview = () => {
@@ -24,12 +22,6 @@ export const SalaryOverview = () => {
     profile, 
     monthlyExpectedSalaries
   );
-
-  // Initialize salary delay notifications
-  useSalaryDelayNotifications({
-    salaryRecords,
-    monthlyExpectedSalaries
-  });
 
   // Dialog states
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -90,8 +82,6 @@ export const SalaryOverview = () => {
         salaryRecords={salaryRecords}
         monthlyExpectedSalaries={monthlyExpectedSalaries}
       />
-
-      <SalaryNotificationSettings />
 
       <SalaryRecordsList
         salaryRecords={salaryRecords}
