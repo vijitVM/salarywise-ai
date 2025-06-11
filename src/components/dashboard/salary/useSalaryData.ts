@@ -13,6 +13,12 @@ export const useSalaryData = () => {
   const { toast } = useToast();
 
   const fetchData = async () => {
+    if (!user?.id) {
+      console.log('No user found, skipping data fetch');
+      setLoading(false);
+      return;
+    }
+
     try {
       // Fetch salary records
       const { data: salaryData, error: salaryError } = await supabase
@@ -27,7 +33,7 @@ export const useSalaryData = () => {
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('id, expected_monthly_salary')
-        .eq('id', user?.id)
+        .eq('id', user.id)
         .single();
 
       if (profileError && profileError.code !== 'PGRST116') throw profileError;
@@ -46,7 +52,7 @@ export const useSalaryData = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [user?.id]);
 
   const addSalaryRecord = async (recordData: {
     amount: number;
