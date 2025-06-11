@@ -121,7 +121,7 @@ export const FinancialChatBot = () => {
 
   return (
     <div className="h-full flex flex-col">
-      <ScrollArea className="flex-1 pr-2">
+      <ScrollArea className="flex-1 pr-2 mb-3">
         <div className="space-y-3">
           {messages.map((message) => (
             <div
@@ -171,23 +171,29 @@ export const FinancialChatBot = () => {
         </div>
       </ScrollArea>
       
-      <div className="flex gap-2 mt-3">
-        <Input
-          value={inputMessage}
-          onChange={(e) => setInputMessage(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder="Ask about your finances..."
-          disabled={isLoading}
-          className="flex-1 text-sm"
-        />
-        <Button 
-          onClick={handleSendMessage}
-          disabled={!inputMessage.trim() || isLoading}
-          size="icon"
-          className="h-9 w-9"
-        >
-          <Send className="h-3 w-3" />
-        </Button>
+      {/* Enhanced Input Area */}
+      <div className="bg-white border-t border-gray-200 p-3 rounded-b-lg shadow-lg">
+        <div className="flex gap-2">
+          <Input
+            value={inputMessage}
+            onChange={(e) => setInputMessage(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Type your financial question here..."
+            disabled={isLoading}
+            className="flex-1 text-sm border-2 border-gray-300 focus:border-blue-500 focus:ring-blue-500 bg-white shadow-sm"
+          />
+          <Button 
+            onClick={handleSendMessage}
+            disabled={!inputMessage.trim() || isLoading}
+            size="icon"
+            className="h-10 w-10 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-md"
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
+        <p className="text-xs text-gray-500 mt-2 text-center">
+          Press Enter to send, or click the send button
+        </p>
       </div>
     </div>
   );

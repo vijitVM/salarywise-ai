@@ -89,15 +89,15 @@ export const FloatingChatWidget = () => {
                   </TabsTrigger>
                 </TabsList>
                 
-                <div className="flex-1 p-4">
+                <div className="flex-1 px-4 pb-2">
                   <TabsContent value="chat" className="h-full mt-0 animate-fade-in">
-                    <div className="h-[480px]">
+                    <div className="h-[470px]">
                       <FinancialChatBot />
                     </div>
                   </TabsContent>
                   
                   <TabsContent value="insights" className="h-full mt-0 animate-fade-in">
-                    <div className="h-[480px] overflow-y-auto">
+                    <div className="h-[470px] overflow-y-auto">
                       <FinancialInsights />
                     </div>
                   </TabsContent>
