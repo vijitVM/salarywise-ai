@@ -32,31 +32,53 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get comprehensive financial data
-    const [salaryRes, expensesRes, budgetsRes, goalsRes] = await Promise.all([
+    // Get comprehensive financial data including transactions
+    const [salaryRes, expensesRes, budgetsRes, goalsRes, transactionsRes] = await Promise.all([
       supabase.from('salary_records').select('*').eq('user_id', userId).order('received_date', { ascending: false }),
       supabase.from('expenses').select('*').eq('user_id', userId).order('expense_date', { ascending: false }),
       supabase.from('budgets').select('*').eq('user_id', userId),
-      supabase.from('financial_goals').select('*').eq('user_id', userId)
+      supabase.from('financial_goals').select('*').eq('user_id', userId),
+      supabase.from('transactions').select('*').eq('user_id', userId).order('transaction_date', { ascending: false })
     ]);
 
     const financialData = {
       salaries: salaryRes.data || [],
       expenses: expensesRes.data || [],
       budgets: budgetsRes.data || [],
-      goals: goalsRes.data || []
+      goals: goalsRes.data || [],
+      transactions: transactionsRes.data || []
     };
 
     // Calculate insights data
     const totalIncome = financialData.salaries.reduce((sum, s) => sum + Number(s.amount), 0);
     const totalExpenses = financialData.expenses.reduce((sum, e) => sum + Number(e.amount), 0);
-    const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome * 100) : 0;
+    
+    // Add transaction totals
+    const transactionIncome = financialData.transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount), 0);
+    const transactionExpenses = financialData.transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0);
+    
+    const combinedIncome = totalIncome + transactionIncome;
+    const combinedExpenses = totalExpenses + transactionExpenses;
+    const savingsRate = combinedIncome > 0 ? ((combinedIncome - combinedExpenses) / combinedIncome * 100) : 0;
 
-    // Category breakdown
+    // Category breakdown from both sources
     const categoryExpenses = financialData.expenses.reduce((acc, expense) => {
       acc[expense.category] = (acc[expense.category] || 0) + Number(expense.amount);
       return acc;
     }, {} as Record<string, number>);
+
+    const transactionCategoryExpenses = financialData.transactions
+      .filter(t => t.type === 'expense')
+      .reduce((acc, transaction) => {
+        acc[transaction.category] = (acc[transaction.category] || 0) + Number(transaction.amount);
+        return acc;
+      }, {} as Record<string, number>);
+
+    // Combine category expenses
+    const combinedCategoryExpenses = { ...categoryExpenses };
+    Object.entries(transactionCategoryExpenses).forEach(([category, amount]) => {
+      combinedCategoryExpenses[category] = (combinedCategoryExpenses[category] || 0) + amount;
+    });
 
     // Budget analysis
     const budgetAnalysis = financialData.budgets.map(budget => ({
@@ -79,14 +101,14 @@ serve(async (req) => {
     }, {} as Record<string, { total: number; count: number; records: any[] }>);
 
     const dataForAI = {
-      totalIncome,
-      totalExpenses,
+      totalIncome: combinedIncome,
+      totalExpenses: combinedExpenses,
       savingsRate: savingsRate.toFixed(1),
-      categoryBreakdown: Object.entries(categoryExpenses)
+      categoryBreakdown: Object.entries(combinedCategoryExpenses)
         .sort(([,a], [,b]) => b - a)
         .slice(0, 5),
       budgetStatus: budgetAnalysis,
-      recentExpenses: financialData.expenses.slice(0, 10),
+      recentExpenses: [...financialData.expenses.slice(0, 5), ...financialData.transactions.filter(t => t.type === 'expense').slice(0, 5)],
       goalProgress: financialData.goals.map(g => ({
         title: g.title,
         progress: ((g.current_amount / g.target_amount) * 100).toFixed(1)
@@ -98,11 +120,13 @@ serve(async (req) => {
       }))
     };
 
-    const systemPrompt = `You are a financial insights AI. Analyze the user's financial data and provide 3-4 key insights as an array of insight objects. Each insight should have:
+    const systemPrompt = `You are a financial insights AI for an Indian user. Analyze the user's financial data and provide 3-4 key insights as an array of insight objects. Each insight should have:
 - type: "positive", "warning", or "suggestion"
 - title: Short descriptive title
 - description: 1-2 sentence explanation with specific details from their data
-- metric: relevant number/percentage if applicable
+- metric: relevant number/percentage if applicable (ALWAYS use ₹ for currency, NEVER use $ or any other currency symbol)
+
+IMPORTANT: ALL currency amounts MUST be formatted with the Indian Rupee symbol (₹) and proper Indian number formatting with commas. For example: ₹1,50,000 instead of $1,500 or 150000.
 
 Focus on actionable insights about spending patterns, budget performance, savings rate, goal progress, and salary trends. Use specific numbers from their data to make insights meaningful.
 
