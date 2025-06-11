@@ -28,24 +28,30 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get user's financial data for context
-    const [salaryRes, expensesRes, budgetsRes, goalsRes] = await Promise.all([
+    const [salaryRes, expensesRes, budgetsRes, goalsRes, transactionsRes] = await Promise.all([
       supabase.from('salary_records').select('*').eq('user_id', userId).order('received_date', { ascending: false }),
       supabase.from('expenses').select('*').eq('user_id', userId).order('expense_date', { ascending: false }),
       supabase.from('budgets').select('*').eq('user_id', userId),
-      supabase.from('financial_goals').select('*').eq('user_id', userId)
+      supabase.from('financial_goals').select('*').eq('user_id', userId),
+      supabase.from('transactions').select('*').eq('user_id', userId).order('transaction_date', { ascending: false })
     ]);
 
     const financialData = {
       salaries: salaryRes.data || [],
       expenses: expensesRes.data || [],
       budgets: budgetsRes.data || [],
-      goals: goalsRes.data || []
+      goals: goalsRes.data || [],
+      transactions: transactionsRes.data || []
     };
 
     // Calculate detailed metrics including monthly breakdowns
     const totalSalary = financialData.salaries.reduce((sum, s) => sum + Number(s.amount), 0);
     const totalExpenses = financialData.expenses.reduce((sum, e) => sum + Number(e.amount), 0);
     const totalBudget = financialData.budgets.reduce((sum, b) => sum + Number(b.monthly_limit), 0);
+
+    // Calculate transaction totals
+    const transactionIncome = financialData.transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount), 0);
+    const transactionExpenses = financialData.transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0);
 
     // Group salaries by month for detailed breakdown
     const salariesByMonth = financialData.salaries.reduce((acc, salary) => {
@@ -62,6 +68,21 @@ serve(async (req) => {
       });
       return acc;
     }, {} as Record<string, any[]>);
+
+    // Group transactions by month
+    const transactionsByMonth = financialData.transactions.reduce((acc, transaction) => {
+      const date = new Date(transaction.transaction_date);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      if (!acc[monthKey]) {
+        acc[monthKey] = { income: [], expenses: [] };
+      }
+      if (transaction.type === 'income') {
+        acc[monthKey].income.push(transaction);
+      } else {
+        acc[monthKey].expenses.push(transaction);
+      }
+      return acc;
+    }, {} as Record<string, { income: any[], expenses: any[] }>);
 
     // Calculate monthly totals
     const monthlyTotals = Object.entries(salariesByMonth).map(([month, records]) => {
@@ -85,11 +106,20 @@ serve(async (req) => {
       return acc;
     }, {} as Record<string, number>);
 
+    // Group transaction expenses by category
+    const transactionExpensesByCategory = financialData.transactions
+      .filter(t => t.type === 'expense')
+      .reduce((acc, transaction) => {
+        acc[transaction.category] = (acc[transaction.category] || 0) + Number(transaction.amount);
+        return acc;
+      }, {} as Record<string, number>);
+
     const systemPrompt = `You are a personal financial advisor AI assistant. You have access to the user's comprehensive financial data and should provide helpful, accurate advice based on their specific information.
 
 User's Financial Summary:
 - Total Salary Records: ${financialData.salaries.length} entries (Total: ₹${totalSalary.toLocaleString()})
-- Total Expenses: ${financialData.expenses.length} entries (Total: ₹${totalExpenses.toLocaleString()})
+- Legacy Expenses: ${financialData.expenses.length} entries (Total: ₹${totalExpenses.toLocaleString()})
+- New Transaction System: ${financialData.transactions.length} entries (Income: ₹${transactionIncome.toLocaleString()}, Expenses: ₹${transactionExpenses.toLocaleString()})
 - Active Budgets: ${financialData.budgets.length} (Total Budget: ₹${totalBudget.toLocaleString()})
 - Financial Goals: ${financialData.goals.length}
 
@@ -99,8 +129,21 @@ ${monthlyTotals.map(m => `${m.month}: ₹${m.total.toLocaleString()} (Regular: �
 INDIVIDUAL SALARY RECORDS:
 ${financialData.salaries.map(s => `${s.salary_month}: ₹${Number(s.amount).toLocaleString()} received on ${s.received_date} ${s.is_bonus ? '(BONUS)' : ''} - ${s.description || 'Regular salary'}`).join('\n')}
 
-EXPENSE BREAKDOWN BY CATEGORY:
+TRANSACTION RECORDS BY MONTH:
+${Object.entries(transactionsByMonth).map(([month, data]) => {
+  const monthIncome = data.income.reduce((sum, t) => sum + Number(t.amount), 0);
+  const monthExpenses = data.expenses.reduce((sum, t) => sum + Number(t.amount), 0);
+  return `${month}: Income ₹${monthIncome.toLocaleString()} (${data.income.length} records), Expenses ₹${monthExpenses.toLocaleString()} (${data.expenses.length} records)`;
+}).join('\n')}
+
+DETAILED TRANSACTION RECORDS:
+${financialData.transactions.map(t => `${t.transaction_date}: ${t.type.toUpperCase()} ₹${Number(t.amount).toLocaleString()} - ${t.category} ${t.description ? `(${t.description})` : ''}`).join('\n')}
+
+LEGACY EXPENSE BREAKDOWN BY CATEGORY:
 ${Object.entries(expensesByCategory).map(([cat, amount]) => `${cat}: ₹${amount.toLocaleString()}`).join('\n')}
+
+NEW TRANSACTION EXPENSES BY CATEGORY:
+${Object.entries(transactionExpensesByCategory).map(([cat, amount]) => `${cat}: ₹${amount.toLocaleString()}`).join('\n')}
 
 ACTIVE BUDGETS:
 ${financialData.budgets.map(b => `${b.category}: ₹${b.current_spent.toLocaleString()}/${Number(b.monthly_limit).toLocaleString()} (${(b.current_spent/Number(b.monthly_limit)*100).toFixed(1)}% used)`).join('\n')}
@@ -114,7 +157,9 @@ When answering questions:
 3. Be conversational but include precise financial figures
 4. Always format currency amounts in Indian Rupees (₹)
 5. When asked about specific months, provide exact amounts and details from their records
-6. If asked about trends, analyze their actual data patterns`;
+6. If asked about trends, analyze their actual data patterns
+7. Note that the user has both legacy expense records and new transaction records - refer to both when relevant
+8. For recent data, prioritize the transaction records as they are the current system being used`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -148,6 +193,8 @@ When answering questions:
         totalSalary,
         totalExpenses,
         totalBudget,
+        transactionIncome,
+        transactionExpenses,
         savingsRate: totalSalary > 0 ? ((totalSalary - totalExpenses) / totalSalary * 100).toFixed(1) : 0,
         monthlyBreakdown: monthlyTotals
       }
