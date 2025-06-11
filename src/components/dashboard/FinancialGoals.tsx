@@ -1,17 +1,15 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Target, Calendar } from 'lucide-react';
+import { Plus, Target, Calendar, TrendingUp, Award } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
+import { GoalProgressChart } from '@/components/charts/GoalProgressChart';
 
 interface FinancialGoal {
   id: string;
@@ -101,12 +99,67 @@ export const FinancialGoals = () => {
     }
   };
 
+  // Calculate goal statistics
+  const totalTargetAmount = goals.reduce((sum, goal) => sum + goal.target_amount, 0);
+  const totalCurrentAmount = goals.reduce((sum, goal) => sum + (goal.current_amount || 0), 0);
+  const completedGoals = goals.filter(goal => (goal.current_amount || 0) >= goal.target_amount).length;
+  const overallProgress = totalTargetAmount > 0 ? (totalCurrentAmount / totalTargetAmount) * 100 : 0;
+
   if (loading) {
     return <div className="text-center py-8">Loading...</div>;
   }
 
   return (
     <div className="space-y-6">
+      {/* Goals Overview Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Goals</CardTitle>
+            <Target className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{goals.length}</div>
+            <p className="text-xs text-muted-foreground">Active goals</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Target</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">₹{totalTargetAmount.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">Combined target amount</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Progress</CardTitle>
+            <TrendingUp className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">{overallProgress.toFixed(1)}%</div>
+            <p className="text-xs text-muted-foreground">Overall progress</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Completed</CardTitle>
+            <Award className={`h-4 w-4 ${completedGoals > 0 ? 'text-green-500' : 'text-muted-foreground'}`} />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${completedGoals > 0 ? 'text-green-600' : ''}`}>
+              {completedGoals}
+            </div>
+            <p className="text-xs text-muted-foreground">Goals achieved</p>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
@@ -177,53 +230,7 @@ export const FinancialGoals = () => {
           </div>
         </CardHeader>
         <CardContent>
-          {goals.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              No financial goals set yet. Create your first goal to get started!
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {goals.map((goal) => {
-                const progressPercentage = (goal.current_amount / goal.target_amount) * 100;
-                
-                return (
-                  <Card key={goal.id}>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-lg">{goal.title}</CardTitle>
-                        <Target className="h-5 w-5 text-gray-500" />
-                      </div>
-                      {goal.description && (
-                        <CardDescription>{goal.description}</CardDescription>
-                      )}
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        <div className="flex justify-between text-sm">
-                          <span>Saved: ₹{goal.current_amount?.toLocaleString() || '0'}</span>
-                          <span>Target: ₹{goal.target_amount.toLocaleString()}</span>
-                        </div>
-                        
-                        <Progress value={progressPercentage} className="h-2" />
-                        
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium text-green-600">
-                            {progressPercentage.toFixed(1)}% Complete
-                          </span>
-                          {goal.target_date && (
-                            <div className="flex items-center text-sm text-gray-500">
-                              <Calendar className="h-3 w-3 mr-1" />
-                              {format(new Date(goal.target_date), 'MMM dd, yyyy')}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
+          <GoalProgressChart goals={goals} />
         </CardContent>
       </Card>
     </div>

@@ -3,6 +3,7 @@ import { useSalaryData } from './salary/useSalaryData';
 import { useSalaryCalculations } from './salary/useSalaryCalculations';
 import { SalaryStatsCards } from './salary/SalaryStatsCards';
 import { SalaryRecordsList } from './salary/SalaryRecordsList';
+import { SalaryInsightsCards } from './salary/SalaryInsightsCards';
 import { format } from 'date-fns';
 
 export const SalaryOverview = () => {
@@ -64,7 +65,7 @@ export const SalaryOverview = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <SalaryStatsCards
         monthlyStats={monthlyStats}
         totalEarnings={totalEarnings}
@@ -74,6 +75,11 @@ export const SalaryOverview = () => {
         isSalaryDialogOpen={isSalaryDialogOpen}
         setIsSalaryDialogOpen={setIsSalaryDialogOpen}
         onUpdateMonthlyExpectedSalary={handleUpdateMonthlyExpectedSalary}
+      />
+
+      <SalaryInsightsCards 
+        salaryRecords={salaryRecords}
+        monthlyExpectedSalaries={monthlyExpectedSalaries}
       />
 
       <SalaryRecordsList

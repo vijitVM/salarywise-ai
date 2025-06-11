@@ -1,15 +1,14 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Target } from 'lucide-react';
+import { Plus, Target, TrendingUp, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { BudgetProgressChart } from '@/components/charts/BudgetProgressChart';
 
 interface Budget {
   id: string;
@@ -91,17 +90,76 @@ export const BudgetManager = () => {
     }
   };
 
+  // Calculate budget statistics
+  const totalBudget = budgets.reduce((sum, budget) => sum + budget.monthly_limit, 0);
+  const totalSpent = budgets.reduce((sum, budget) => sum + (budget.current_spent || 0), 0);
+  const budgetsOverLimit = budgets.filter(budget => (budget.current_spent || 0) > budget.monthly_limit).length;
+  const remainingBudget = totalBudget - totalSpent;
+
   if (loading) {
     return <div className="text-center py-8">Loading...</div>;
   }
 
   return (
     <div className="space-y-6">
+      {/* Budget Overview Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Budget</CardTitle>
+            <Target className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">₹{totalBudget.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">Monthly budget limit</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">₹{totalSpent.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">This month</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Remaining</CardTitle>
+            <TrendingUp className={`h-4 w-4 ${remainingBudget >= 0 ? 'text-green-500' : 'text-red-500'}`} />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${remainingBudget >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              ₹{Math.abs(remainingBudget).toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {remainingBudget >= 0 ? 'Left to spend' : 'Over budget'}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Over Budget</CardTitle>
+            <AlertTriangle className={`h-4 w-4 ${budgetsOverLimit > 0 ? 'text-red-500' : 'text-green-500'}`} />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${budgetsOverLimit > 0 ? 'text-red-600' : 'text-green-600'}`}>
+              {budgetsOverLimit}
+            </div>
+            <p className="text-xs text-muted-foreground">Categories over limit</p>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
-              <CardTitle>Budget Overview</CardTitle>
+              <CardTitle>Budget Progress</CardTitle>
               <CardDescription>Track your spending against your budgets</CardDescription>
             </div>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -149,48 +207,7 @@ export const BudgetManager = () => {
           </div>
         </CardHeader>
         <CardContent>
-          {budgets.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              No budgets created yet. Create your first budget to start tracking!
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {budgets.map((budget) => {
-                const spentPercentage = (budget.current_spent / budget.monthly_limit) * 100;
-                const isOverBudget = spentPercentage > 100;
-                
-                return (
-                  <Card key={budget.id}>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-lg">{budget.category}</CardTitle>
-                        <Target className="h-5 w-5 text-gray-500" />
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        <div className="flex justify-between text-sm">
-                          <span>Spent: ₹{budget.current_spent?.toLocaleString() || '0'}</span>
-                          <span>Limit: ₹{budget.monthly_limit.toLocaleString()}</span>
-                        </div>
-                        
-                        <Progress 
-                          value={Math.min(spentPercentage, 100)} 
-                          className={`h-2 ${isOverBudget ? 'bg-red-100' : ''}`}
-                        />
-                        
-                        <div className="text-center">
-                          <span className={`text-sm font-medium ${isOverBudget ? 'text-red-600' : 'text-green-600'}`}>
-                            {isOverBudget ? 'Over budget' : `${(100 - spentPercentage).toFixed(0)}% remaining`}
-                          </span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
+          <BudgetProgressChart budgets={budgets} />
         </CardContent>
       </Card>
     </div>
