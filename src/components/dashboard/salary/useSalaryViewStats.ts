@@ -37,12 +37,12 @@ export const useSalaryViewStats = (
         return isWithinInterval(recordDate, { start: viewMonthStart, end: viewMonthEnd });
       }).length;
 
-    // Status logic based on total received vs expected
-    const shortfall = expectedAmount - totalReceivedInMonth;
-    const isComplete = totalReceivedInMonth >= expectedAmount && expectedAmount > 0;
-    const isMissing = totalReceivedInMonth === 0 && expectedAmount > 0;
-    const isIncomplete = totalReceivedInMonth > 0 && totalReceivedInMonth < expectedAmount && expectedAmount > 0;
-    const isExcess = totalReceivedInMonth > expectedAmount && expectedAmount > 0;
+    // Status logic based on SALARY FOR THE MONTH vs expected (not total received during month)
+    const shortfall = expectedAmount - salaryForViewMonth;
+    const isComplete = salaryForViewMonth >= expectedAmount && expectedAmount > 0;
+    const isMissing = salaryForViewMonth === 0 && expectedAmount > 0;
+    const isIncomplete = salaryForViewMonth > 0 && salaryForViewMonth < expectedAmount && expectedAmount > 0;
+    const isExcess = salaryForViewMonth > expectedAmount && expectedAmount > 0;
 
     console.log(`Stats for ${viewMonth}:`, {
       expectedAmount,
@@ -53,7 +53,8 @@ export const useSalaryViewStats = (
       isComplete,
       isMissing,
       isIncomplete,
-      isExcess
+      isExcess,
+      statusBasedOn: 'salaryForViewMonth vs expectedAmount'
     });
 
     return {
