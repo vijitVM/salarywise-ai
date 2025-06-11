@@ -38,12 +38,6 @@ export const SalaryStatsCards = ({
   const viewMonthStats = useSalaryViewStats(viewMonth, monthlyExpectedSalaries, salaryRecords);
 
   const isCurrentMonth = viewMonth === format(new Date(), 'yyyy-MM');
-  const displayStats = isCurrentMonth ? monthlyStats : {
-    expectedSalary: viewMonthStats.expectedAmount,
-    salaryForCurrentMonth: viewMonthStats.salaryRecord,
-    currentMonthTotal: viewMonthStats.totalReceivedInMonth,
-    remainingBalance: viewMonthStats.shortfall
-  };
 
   return (
     <div className="space-y-6">
@@ -55,7 +49,7 @@ export const SalaryStatsCards = ({
         {/* Expected Salary Card */}
         <ExpectedSalaryCard
           viewMonth={viewMonth}
-          expectedSalary={displayStats.expectedSalary}
+          expectedSalary={isCurrentMonth ? expectedSalary : viewMonthStats.expectedAmount}
           isCurrentMonth={isCurrentMonth}
           isSalaryDialogOpen={isSalaryDialogOpen}
           setIsSalaryDialogOpen={setIsSalaryDialogOpen}
@@ -65,8 +59,8 @@ export const SalaryStatsCards = ({
         {/* Month Received Card */}
         <MonthReceivedCard
           viewMonth={viewMonth}
-          currentMonthTotal={displayStats.currentMonthTotal}
-          expectedSalary={displayStats.expectedSalary}
+          currentMonthTotal={isCurrentMonth ? currentMonthTotal : viewMonthStats.totalReceivedInMonth}
+          expectedSalary={isCurrentMonth ? expectedSalary : viewMonthStats.expectedAmount}
           isCurrentMonth={isCurrentMonth}
           currentMonthRecords={currentMonthRecords}
           viewMonthStats={viewMonthStats}
@@ -75,8 +69,8 @@ export const SalaryStatsCards = ({
         {/* Salary for Month Card */}
         <SalaryForMonthCard
           viewMonth={viewMonth}
-          salaryForCurrentMonth={displayStats.salaryForCurrentMonth}
-          expectedSalary={displayStats.expectedSalary}
+          salaryForCurrentMonth={isCurrentMonth ? salaryForCurrentMonth : viewMonthStats.salaryRecord}
+          expectedSalary={isCurrentMonth ? expectedSalary : viewMonthStats.expectedAmount}
         />
 
         {/* Status Card */}
@@ -84,8 +78,8 @@ export const SalaryStatsCards = ({
           viewMonth={viewMonth}
           isCurrentMonth={isCurrentMonth}
           pendingSalaryMonths={pendingSalaryMonths}
-          currentMonthTotal={displayStats.currentMonthTotal}
-          expectedSalary={displayStats.expectedSalary}
+          currentMonthTotal={isCurrentMonth ? currentMonthTotal : viewMonthStats.totalReceivedInMonth}
+          expectedSalary={isCurrentMonth ? expectedSalary : viewMonthStats.expectedAmount}
           viewMonthStats={viewMonthStats}
         />
       </div>

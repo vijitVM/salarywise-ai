@@ -10,6 +10,7 @@ interface ViewMonthStats {
   shortfall: number;
   expectedAmount: number;
   paymentsCount: number;
+  totalReceivedInMonth: number;
 }
 
 interface MonthReceivedCardProps {
@@ -29,17 +30,15 @@ export const MonthReceivedCard = ({
   currentMonthRecords,
   viewMonthStats
 }: MonthReceivedCardProps) => {
-  const shortfallAmount = isCurrentMonth 
-    ? (expectedSalary - currentMonthTotal)
-    : Math.abs(viewMonthStats.shortfall);
+  const displayAmount = isCurrentMonth ? currentMonthTotal : viewMonthStats.totalReceivedInMonth;
+  const displayExpected = isCurrentMonth ? expectedSalary : viewMonthStats.expectedAmount;
+  const paymentsCount = isCurrentMonth ? currentMonthRecords.length : viewMonthStats.paymentsCount;
 
-  const isIncompletePayment = isCurrentMonth 
-    ? (currentMonthTotal > 0 && currentMonthTotal < expectedSalary)
-    : viewMonthStats.isIncomplete;
-  
-  const isSalaryMissing = isCurrentMonth 
-    ? (currentMonthTotal === 0 && expectedSalary > 0)
-    : viewMonthStats.isComplete === false && currentMonthTotal === 0 && expectedSalary > 0;
+  const shortfallAmount = Math.abs(displayExpected - displayAmount);
+  const isIncompletePayment = displayAmount > 0 && displayAmount < displayExpected && displayExpected > 0;
+  const isSalaryMissing = displayAmount === 0 && displayExpected > 0;
+  const isComplete = displayAmount >= displayExpected && displayExpected > 0;
+  const isExcess = displayAmount > displayExpected && displayExpected > 0;
 
   return (
     <Card>
@@ -47,60 +46,37 @@ export const MonthReceivedCard = ({
         <CardTitle className="text-sm font-medium">
           Received in {format(parseISO(viewMonth + '-01'), 'MMM yyyy')}
         </CardTitle>
-        {!isCurrentMonth ? (
-          viewMonthStats.isComplete ? (
-            <CheckCircle className="h-4 w-4 text-green-500" />
-          ) : viewMonthStats.isExcess ? (
-            <TrendingUp className="h-4 w-4 text-blue-500" />
-          ) : viewMonthStats.isIncomplete ? (
-            <AlertTriangle className="h-4 w-4 text-orange-500" />
-          ) : (
-            <Clock className="h-4 w-4 text-amber-500" />
-          )
+        {isComplete ? (
+          <CheckCircle className="h-4 w-4 text-green-500" />
+        ) : isExcess ? (
+          <TrendingUp className="h-4 w-4 text-blue-500" />
+        ) : isIncompletePayment ? (
+          <AlertTriangle className="h-4 w-4 text-orange-500" />
         ) : (
-          currentMonthTotal >= expectedSalary && expectedSalary > 0 ? (
-            <CheckCircle className="h-4 w-4 text-green-500" />
-          ) : currentMonthTotal > 0 && currentMonthTotal < expectedSalary ? (
-            <AlertTriangle className="h-4 w-4 text-orange-500" />
-          ) : (
-            <Clock className="h-4 w-4 text-amber-500" />
-          )
+          <Clock className="h-4 w-4 text-amber-500" />
         )}
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold">
-          ₹{currentMonthTotal.toLocaleString()}
+          ₹{displayAmount.toLocaleString()}
         </div>
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground">
-            {isCurrentMonth 
-              ? `${currentMonthRecords.length} payment(s) this month`
-              : `${viewMonthStats.paymentsCount} payment(s) in ${format(parseISO(viewMonth + '-01'), 'MMM yyyy')}`
-            }
+            {paymentsCount} payment(s) in {format(parseISO(viewMonth + '-01'), 'MMM yyyy')}
           </p>
-          {!isCurrentMonth && viewMonthStats.isIncomplete && (
+          {isIncompletePayment && (
             <p className="text-xs text-orange-600 font-medium">
               Short by ₹{shortfallAmount.toLocaleString()}
             </p>
           )}
-          {!isCurrentMonth && !viewMonthStats.isComplete && currentMonthTotal === 0 && viewMonthStats.expectedAmount > 0 && (
+          {isSalaryMissing && (
             <p className="text-xs text-red-600 font-medium">
-              Missing ₹{viewMonthStats.expectedAmount.toLocaleString()}
+              Missing ₹{displayExpected.toLocaleString()}
             </p>
           )}
-          {!isCurrentMonth && viewMonthStats.isExcess && (
+          {isExcess && (
             <p className="text-xs text-blue-600 font-medium">
-              Excess by ₹{Math.abs(viewMonthStats.shortfall).toLocaleString()}
-            </p>
-          )}
-          {isCurrentMonth && isIncompletePayment && (
-            <p className="text-xs text-orange-600 font-medium">
-              Short by ₹{shortfallAmount.toLocaleString()}
-            </p>
-          )}
-          {isCurrentMonth && isSalaryMissing && (
-            <p className="text-xs text-red-600 font-medium">
-              Missing ₹{expectedSalary.toLocaleString()}
+              Excess by ₹{shortfallAmount.toLocaleString()}
             </p>
           )}
         </div>

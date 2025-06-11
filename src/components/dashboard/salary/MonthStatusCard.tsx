@@ -7,7 +7,10 @@ interface ViewMonthStats {
   isComplete: boolean;
   isExcess: boolean;
   isIncomplete: boolean;
+  isMissing: boolean;
   shortfall: number;
+  totalReceivedInMonth: number;
+  expectedAmount: number;
 }
 
 interface MonthStatusCardProps {
@@ -27,6 +30,9 @@ export const MonthStatusCard = ({
   expectedSalary,
   viewMonthStats
 }: MonthStatusCardProps) => {
+  const displayAmount = isCurrentMonth ? currentMonthTotal : viewMonthStats.totalReceivedInMonth;
+  const displayExpected = isCurrentMonth ? expectedSalary : viewMonthStats.expectedAmount;
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -61,7 +67,7 @@ export const MonthStatusCard = ({
                   Pending: {pendingSalaryMonths.map(month => format(parseISO(month + '-01'), 'MMM')).join(', ')}
                 </p>
               </>
-            ) : currentMonthTotal < expectedSalary && expectedSalary > 0 ? (
+            ) : displayAmount < displayExpected && displayExpected > 0 ? (
               <>
                 <div className="text-2xl font-bold text-orange-600">Partial</div>
                 <p className="text-xs text-muted-foreground">
