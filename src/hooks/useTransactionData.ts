@@ -30,7 +30,18 @@ export const useTransactionData = () => {
         .order('transaction_date', { ascending: false });
 
       if (error) throw error;
-      setTransactions(data || []);
+      
+      // Type cast the data to ensure type safety
+      const typedTransactions = (data || []).map(item => ({
+        id: item.id,
+        amount: item.amount,
+        type: item.type as 'income' | 'expense',
+        category: item.category,
+        description: item.description,
+        transaction_date: item.transaction_date,
+      }));
+      
+      setTransactions(typedTransactions);
     } catch (error) {
       console.error('Error fetching transactions:', error);
     } finally {

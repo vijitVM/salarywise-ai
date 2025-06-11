@@ -4,7 +4,6 @@ import { SalaryOverview } from './SalaryOverview';
 import { TransactionTracker } from './TransactionTracker';
 import { BudgetManager } from './BudgetManager';
 import { FinancialGoals } from './FinancialGoals';
-import { AIFinancialAdvisor } from './AIFinancialAdvisor';
 import { Header } from '@/components/layout/Header';
 import { FloatingChatWidget } from '@/components/ai/FloatingChatWidget';
 
@@ -24,12 +23,11 @@ export const Dashboard = () => {
           </div>
 
           <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="overview">Salary Overview</TabsTrigger>
               <TabsTrigger value="transactions">Transactions</TabsTrigger>
               <TabsTrigger value="budgets">Budgets</TabsTrigger>
               <TabsTrigger value="goals">Goals</TabsTrigger>
-              <TabsTrigger value="ai-advisor">AI Advisor</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
@@ -46,10 +44,6 @@ export const Dashboard = () => {
 
             <TabsContent value="goals" className="space-y-6">
               <FinancialGoals />
-            </TabsContent>
-
-            <TabsContent value="ai-advisor" className="space-y-6">
-              <AIFinancialAdvisor />
             </TabsContent>
           </Tabs>
         </div>
