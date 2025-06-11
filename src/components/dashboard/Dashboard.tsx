@@ -14,7 +14,7 @@ export const Dashboard = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/30 dark:from-gray-900 dark:via-blue-900/10 dark:to-indigo-900/10">
       <Header />
       
-      <main className="max-w-7xl mx-auto py-4 sm:py-6 px-4 sm:px-6 lg:px-8">
+      <main className="w-full py-4 sm:py-6 px-4 sm:px-6 lg:px-8">
         <div className="mb-6 sm:mb-8 animate-fade-in">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg">
