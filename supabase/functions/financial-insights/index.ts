@@ -32,7 +32,7 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get comprehensive financial data including transactions
+    // Get comprehensive financial data with user filtering
     const [salaryRes, expensesRes, budgetsRes, goalsRes, transactionsRes] = await Promise.all([
       supabase.from('salary_records').select('*').eq('user_id', userId).order('received_date', { ascending: false }),
       supabase.from('expenses').select('*').eq('user_id', userId).order('expense_date', { ascending: false }),
@@ -40,6 +40,14 @@ serve(async (req) => {
       supabase.from('financial_goals').select('*').eq('user_id', userId),
       supabase.from('transactions').select('*').eq('user_id', userId).order('transaction_date', { ascending: false })
     ]);
+
+    console.log('Data fetched:', {
+      salaries: salaryRes.data?.length || 0,
+      expenses: expensesRes.data?.length || 0,
+      budgets: budgetsRes.data?.length || 0,
+      goals: goalsRes.data?.length || 0,
+      transactions: transactionsRes.data?.length || 0
+    });
 
     const financialData = {
       salaries: salaryRes.data || [],
@@ -49,86 +57,135 @@ serve(async (req) => {
       transactions: transactionsRes.data || []
     };
 
-    // Calculate insights data
-    const totalIncome = financialData.salaries.reduce((sum, s) => sum + Number(s.amount), 0);
-    const totalExpenses = financialData.expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+    // Calculate accurate totals with proper data validation
+    const totalSalaryIncome = financialData.salaries
+      .filter(s => s.amount && !isNaN(Number(s.amount)))
+      .reduce((sum, s) => sum + Number(s.amount), 0);
+
+    const totalLegacyExpenses = financialData.expenses
+      .filter(e => e.amount && !isNaN(Number(e.amount)))
+      .reduce((sum, e) => sum + Number(e.amount), 0);
     
-    // Add transaction totals
-    const transactionIncome = financialData.transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount), 0);
-    const transactionExpenses = financialData.transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0);
+    // Transaction totals with validation
+    const transactionIncome = financialData.transactions
+      .filter(t => t.type === 'income' && t.amount && !isNaN(Number(t.amount)))
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+
+    const transactionExpenses = financialData.transactions
+      .filter(t => t.type === 'expense' && t.amount && !isNaN(Number(t.amount)))
+      .reduce((sum, t) => sum + Number(t.amount), 0);
     
-    const combinedIncome = totalIncome + transactionIncome;
-    const combinedExpenses = totalExpenses + transactionExpenses;
-    const savingsRate = combinedIncome > 0 ? ((combinedIncome - combinedExpenses) / combinedIncome * 100) : 0;
+    // Combined totals
+    const totalIncome = totalSalaryIncome + transactionIncome;
+    const totalExpenses = totalLegacyExpenses + transactionExpenses;
+    const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome * 100) : 0;
 
-    // Category breakdown from both sources
-    const categoryExpenses = financialData.expenses.reduce((acc, expense) => {
-      acc[expense.category] = (acc[expense.category] || 0) + Number(expense.amount);
-      return acc;
-    }, {} as Record<string, number>);
-
-    const transactionCategoryExpenses = financialData.transactions
-      .filter(t => t.type === 'expense')
-      .reduce((acc, transaction) => {
-        acc[transaction.category] = (acc[transaction.category] || 0) + Number(transaction.amount);
-        return acc;
-      }, {} as Record<string, number>);
-
-    // Combine category expenses
-    const combinedCategoryExpenses = { ...categoryExpenses };
-    Object.entries(transactionCategoryExpenses).forEach(([category, amount]) => {
-      combinedCategoryExpenses[category] = (combinedCategoryExpenses[category] || 0) + amount;
+    console.log('Calculated totals:', {
+      totalIncome,
+      totalExpenses,
+      savingsRate: savingsRate.toFixed(1) + '%'
     });
 
-    // Budget analysis
-    const budgetAnalysis = financialData.budgets.map(budget => ({
-      category: budget.category,
-      spent: budget.current_spent,
-      limit: budget.monthly_limit,
-      percentage: (budget.current_spent / budget.monthly_limit) * 100
-    }));
-
-    // Monthly salary breakdown
-    const monthlySalaries = financialData.salaries.reduce((acc, salary) => {
-      const month = salary.salary_month;
-      if (!acc[month]) {
-        acc[month] = { total: 0, count: 0, records: [] };
+    // Category breakdown with validation - combining both sources
+    const categoryExpenses = {};
+    
+    // Add legacy expenses
+    financialData.expenses.forEach(expense => {
+      if (expense.category && expense.amount && !isNaN(Number(expense.amount))) {
+        categoryExpenses[expense.category] = (categoryExpenses[expense.category] || 0) + Number(expense.amount);
       }
-      acc[month].total += Number(salary.amount);
-      acc[month].count += 1;
-      acc[month].records.push(salary);
-      return acc;
-    }, {} as Record<string, { total: number; count: number; records: any[] }>);
+    });
+
+    // Add transaction expenses
+    financialData.transactions
+      .filter(t => t.type === 'expense')
+      .forEach(transaction => {
+        if (transaction.category && transaction.amount && !isNaN(Number(transaction.amount))) {
+          categoryExpenses[transaction.category] = (categoryExpenses[transaction.category] || 0) + Number(transaction.amount);
+        }
+      });
+
+    // Budget analysis with validation
+    const budgetAnalysis = financialData.budgets
+      .filter(budget => budget.monthly_limit && !isNaN(Number(budget.monthly_limit)))
+      .map(budget => ({
+        category: budget.category,
+        spent: Number(budget.current_spent || 0),
+        limit: Number(budget.monthly_limit),
+        percentage: budget.monthly_limit > 0 ? (Number(budget.current_spent || 0) / Number(budget.monthly_limit)) * 100 : 0
+      }));
+
+    // Recent salary analysis (last 6 months)
+    const recentSalaries = financialData.salaries
+      .filter(s => s.amount && !isNaN(Number(s.amount)) && !s.is_bonus)
+      .slice(0, 6);
+
+    const avgMonthlySalary = recentSalaries.length > 0 
+      ? recentSalaries.reduce((sum, s) => sum + Number(s.amount), 0) / recentSalaries.length 
+      : 0;
+
+    // Recent transactions (last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const recentTransactions = financialData.transactions.filter(t => {
+      const transactionDate = new Date(t.transaction_date);
+      return transactionDate >= thirtyDaysAgo && t.amount && !isNaN(Number(t.amount));
+    });
 
     const dataForAI = {
-      totalIncome: combinedIncome,
-      totalExpenses: combinedExpenses,
-      savingsRate: savingsRate.toFixed(1),
-      categoryBreakdown: Object.entries(combinedCategoryExpenses)
+      totalIncome: Math.round(totalIncome),
+      totalExpenses: Math.round(totalExpenses),
+      savingsRate: Math.round(savingsRate * 10) / 10, // Round to 1 decimal
+      categoryBreakdown: Object.entries(categoryExpenses)
         .sort(([,a], [,b]) => b - a)
-        .slice(0, 5),
+        .slice(0, 5)
+        .map(([category, amount]) => [category, Math.round(amount)]),
       budgetStatus: budgetAnalysis,
-      recentExpenses: [...financialData.expenses.slice(0, 5), ...financialData.transactions.filter(t => t.type === 'expense').slice(0, 5)],
-      goalProgress: financialData.goals.map(g => ({
-        title: g.title,
-        progress: ((g.current_amount / g.target_amount) * 100).toFixed(1)
-      })),
-      monthlySalaryBreakdown: Object.entries(monthlySalaries).map(([month, data]) => ({
-        month,
-        total: data.total,
-        count: data.count
-      }))
+      recentExpenses: [
+        ...financialData.expenses.slice(0, 3).map(e => ({
+          category: e.category,
+          amount: Math.round(Number(e.amount || 0)),
+          date: e.expense_date
+        })),
+        ...recentTransactions.filter(t => t.type === 'expense').slice(0, 3).map(t => ({
+          category: t.category,
+          amount: Math.round(Number(t.amount || 0)),
+          date: t.transaction_date
+        }))
+      ],
+      goalProgress: financialData.goals
+        .filter(g => g.target_amount && !isNaN(Number(g.target_amount)))
+        .map(g => ({
+          title: g.title,
+          progress: Number(g.target_amount) > 0 ? Math.round((Number(g.current_amount || 0) / Number(g.target_amount)) * 100) : 0
+        })),
+      avgMonthlySalary: Math.round(avgMonthlySalary),
+      recentSalaryCount: recentSalaries.length,
+      dataQuality: {
+        hasTransactions: financialData.transactions.length > 0,
+        hasExpenses: financialData.expenses.length > 0,
+        hasSalaries: financialData.salaries.length > 0,
+        hasBudgets: financialData.budgets.length > 0
+      }
     };
+
+    console.log('Data for AI:', dataForAI);
 
     const systemPrompt = `You are a financial insights AI for an Indian user. Analyze the user's financial data and provide 3-4 key insights as an array of insight objects. Each insight should have:
 - type: "positive", "warning", or "suggestion"
-- title: Short descriptive title
+- title: Short descriptive title (max 4 words)
 - description: 1-2 sentence explanation with specific details from their data
 - metric: relevant number/percentage if applicable (ALWAYS use ₹ for currency, NEVER use $ or any other currency symbol)
 
-IMPORTANT: ALL currency amounts MUST be formatted with the Indian Rupee symbol (₹) and proper Indian number formatting with commas. For example: ₹1,50,000 instead of $1,500 or 150000.
+CRITICAL REQUIREMENTS:
+1. ALL currency amounts MUST use Indian Rupee symbol (₹) and proper formatting with commas
+2. Only provide insights based on actual data - if no data exists for a category, don't make assumptions
+3. Be accurate with calculations and numbers
+4. Focus on actionable insights about spending patterns, budget performance, savings rate, and goal progress
+5. If data seems incomplete or inconsistent, mention it appropriately
 
-Focus on actionable insights about spending patterns, budget performance, savings rate, goal progress, and salary trends. Use specific numbers from their data to make insights meaningful.
+Data quality context: ${JSON.stringify(dataForAI.dataQuality)}
 
 Respond with ONLY a valid JSON array of insight objects, no markdown formatting.`;
 
@@ -145,7 +202,7 @@ Respond with ONLY a valid JSON array of insight objects, no markdown formatting.
           { role: 'system', content: systemPrompt },
           { role: 'user', content: `Financial Data: ${JSON.stringify(dataForAI)}` }
         ],
-        temperature: 0.3,
+        temperature: 0.2, // Lower temperature for more consistent results
         max_tokens: 800,
       }),
     });
@@ -168,12 +225,31 @@ Respond with ONLY a valid JSON array of insight objects, no markdown formatting.
     
     const insights = JSON.parse(content);
 
-    return new Response(JSON.stringify({ insights, summary: dataForAI }), {
+    return new Response(JSON.stringify({ 
+      insights, 
+      summary: dataForAI,
+      debug: {
+        totalRecords: {
+          salaries: financialData.salaries.length,
+          expenses: financialData.expenses.length,
+          transactions: financialData.transactions.length,
+          budgets: financialData.budgets.length
+        },
+        calculations: {
+          totalIncome,
+          totalExpenses,
+          savingsRate: savingsRate.toFixed(1) + '%'
+        }
+      }
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
     console.error('Error in financial-insights function:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ 
+      error: error.message,
+      details: 'Check the function logs for more information'
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
