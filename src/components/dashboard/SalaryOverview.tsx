@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useSalaryData } from './salary/useSalaryData';
 import { useSalaryCalculations } from './salary/useSalaryCalculations';
@@ -71,6 +70,7 @@ export const SalaryOverview = () => {
         totalEarnings={totalEarnings}
         totalRecords={salaryRecords.length}
         monthlyExpectedSalaries={monthlyExpectedSalaries}
+        salaryRecords={salaryRecords}
         isSalaryDialogOpen={isSalaryDialogOpen}
         setIsSalaryDialogOpen={setIsSalaryDialogOpen}
         onUpdateMonthlyExpectedSalary={handleUpdateMonthlyExpectedSalary}
