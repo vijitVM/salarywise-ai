@@ -41,7 +41,7 @@ serve(async (req) => {
       supabase.from('transactions').select('*').eq('user_id', userId).order('transaction_date', { ascending: false })
     ]);
 
-    console.log('Data fetched:', {
+    console.log('Raw data fetched:', {
       salaries: salaryRes.data?.length || 0,
       expenses: expensesRes.data?.length || 0,
       budgets: budgetsRes.data?.length || 0,
@@ -57,166 +57,165 @@ serve(async (req) => {
       transactions: transactionsRes.data || []
     };
 
-    // Calculate totals more accurately
-    const totalSalaryIncome = financialData.salaries
-      .filter(s => s.amount && !isNaN(Number(s.amount)))
-      .reduce((sum, s) => sum + Number(s.amount), 0);
+    // Enhanced validation function
+    const validateAmount = (amount: any): number => {
+      if (amount === null || amount === undefined || amount === '') return 0;
+      const parsed = Number(amount);
+      return isNaN(parsed) || parsed < 0 ? 0 : parsed;
+    };
 
-    const totalLegacyExpenses = financialData.expenses
-      .filter(e => e.amount && !isNaN(Number(e.amount)))
-      .reduce((sum, e) => sum + Number(e.amount), 0);
-    
-    // Transaction totals with validation
+    // Calculate income with deduplication logic
+    const salaryIncome = financialData.salaries
+      .filter(s => s.amount && validateAmount(s.amount) > 0)
+      .reduce((sum, s) => sum + validateAmount(s.amount), 0);
+
+    // Only count transaction income if no salary records exist, or if they're clearly different
     const transactionIncome = financialData.transactions
-      .filter(t => t.type === 'income' && t.amount && !isNaN(Number(t.amount)))
-      .reduce((sum, t) => sum + Number(t.amount), 0);
+      .filter(t => t.type === 'income' && validateAmount(t.amount) > 0)
+      .reduce((sum, t) => sum + validateAmount(t.amount), 0);
 
-    const transactionExpenses = financialData.transactions
-      .filter(t => t.type === 'expense' && t.amount && !isNaN(Number(t.amount)))
-      .reduce((sum, t) => sum + Number(t.amount), 0);
+    // Use salary records as primary source, transactions as secondary
+    const totalIncome = salaryIncome > 0 ? salaryIncome : transactionIncome;
     
-    // Combined totals
-    const totalIncome = totalSalaryIncome + transactionIncome;
-    const totalExpenses = totalLegacyExpenses + transactionExpenses;
+    console.log('Income calculation:', {
+      salaryIncome,
+      transactionIncome,
+      totalIncomeUsed: totalIncome,
+      source: salaryIncome > 0 ? 'salary_records' : 'transactions'
+    });
+
+    // Calculate expenses - combine both sources as they represent different types
+    const legacyExpenses = financialData.expenses
+      .filter(e => validateAmount(e.amount) > 0)
+      .reduce((sum, e) => sum + validateAmount(e.amount), 0);
+    
+    const transactionExpenses = financialData.transactions
+      .filter(t => t.type === 'expense' && validateAmount(t.amount) > 0)
+      .reduce((sum, t) => sum + validateAmount(t.amount), 0);
+    
+    const totalExpenses = legacyExpenses + transactionExpenses;
     const netSavings = totalIncome - totalExpenses;
     const savingsRate = totalIncome > 0 ? (netSavings / totalIncome * 100) : 0;
 
-    console.log('Calculated totals:', {
-      totalIncome,
+    console.log('Expense calculation:', {
+      legacyExpenses,
+      transactionExpenses,
       totalExpenses,
       netSavings,
       savingsRate: savingsRate.toFixed(1) + '%'
     });
 
-    // Category breakdown with validation - combining both sources
+    // Enhanced category breakdown - combine both sources properly
     const categoryExpenses = {};
     
-    // Add legacy expenses
+    // Add legacy expenses with validation
     financialData.expenses.forEach(expense => {
-      if (expense.category && expense.amount && !isNaN(Number(expense.amount))) {
-        categoryExpenses[expense.category] = (categoryExpenses[expense.category] || 0) + Number(expense.amount);
+      const amount = validateAmount(expense.amount);
+      if (expense.category && amount > 0) {
+        const category = expense.category.trim();
+        categoryExpenses[category] = (categoryExpenses[category] || 0) + amount;
       }
     });
 
-    // Add transaction expenses
+    // Add transaction expenses with validation
     financialData.transactions
       .filter(t => t.type === 'expense')
       .forEach(transaction => {
-        if (transaction.category && transaction.amount && !isNaN(Number(transaction.amount))) {
-          categoryExpenses[transaction.category] = (categoryExpenses[transaction.category] || 0) + Number(transaction.amount);
+        const amount = validateAmount(transaction.amount);
+        if (transaction.category && amount > 0) {
+          const category = transaction.category.trim();
+          categoryExpenses[category] = (categoryExpenses[category] || 0) + amount;
         }
       });
 
-    // Get current month's data for more accurate insights
-    const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
-    const lastThreeMonths = new Date();
-    lastThreeMonths.setMonth(lastThreeMonths.getMonth() - 3);
-
-    // Recent transactions (last 30 days)
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
-    const recentTransactions = financialData.transactions.filter(t => {
-      const transactionDate = new Date(t.transaction_date);
-      return transactionDate >= thirtyDaysAgo && t.amount && !isNaN(Number(t.amount));
-    });
-
-    const recentExpenses = financialData.expenses.filter(e => {
-      const expenseDate = new Date(e.expense_date);
-      return expenseDate >= thirtyDaysAgo && e.amount && !isNaN(Number(e.amount));
-    });
-
-    // Calculate monthly averages for better insights
-    const recentSalaries = financialData.salaries
-      .filter(s => s.amount && !isNaN(Number(s.amount)) && !s.is_bonus)
-      .slice(0, 6);
-
-    const avgMonthlySalary = recentSalaries.length > 0 
-      ? recentSalaries.reduce((sum, s) => sum + Number(s.amount), 0) / recentSalaries.length 
-      : 0;
-
-    // Budget analysis with validation
+    // Enhanced budget analysis with better validation
     const budgetAnalysis = financialData.budgets
-      .filter(budget => budget.monthly_limit && !isNaN(Number(budget.monthly_limit)))
-      .map(budget => ({
-        category: budget.category,
-        spent: Number(budget.current_spent || 0),
-        limit: Number(budget.monthly_limit),
-        percentage: budget.monthly_limit > 0 ? (Number(budget.current_spent || 0) / Number(budget.monthly_limit)) * 100 : 0
-      }));
+      .filter(budget => validateAmount(budget.monthly_limit) > 0)
+      .map(budget => {
+        const spent = validateAmount(budget.current_spent);
+        const limit = validateAmount(budget.monthly_limit);
+        return {
+          category: budget.category,
+          spent: Math.round(spent),
+          limit: Math.round(limit),
+          percentage: limit > 0 ? Math.round((spent / limit) * 100) : 0
+        };
+      });
 
+    // Enhanced goal analysis
+    const goalProgress = financialData.goals
+      .filter(g => validateAmount(g.target_amount) > 0)
+      .map(g => {
+        const current = validateAmount(g.current_amount);
+        const target = validateAmount(g.target_amount);
+        return {
+          title: g.title,
+          progress: target > 0 ? Math.round((current / target) * 100) : 0,
+          current: Math.round(current),
+          target: Math.round(target)
+        };
+      });
+
+    // Create clean data for AI with proper rounding
     const dataForAI = {
       totalIncome: Math.round(totalIncome),
       totalExpenses: Math.round(totalExpenses),
       netSavings: Math.round(netSavings),
-      savingsRate: Math.round(savingsRate * 10) / 10,
+      savingsRate: Math.round(savingsRate * 10) / 10, // Round to 1 decimal
       categoryBreakdown: Object.entries(categoryExpenses)
+        .filter(([_, amount]) => amount > 0)
         .sort(([,a], [,b]) => b - a)
-        .slice(0, 8)
+        .slice(0, 6) // Limit to top 6 categories
         .map(([category, amount]) => [category, Math.round(amount)]),
       budgetStatus: budgetAnalysis,
-      recentMonthlyExpenses: [
-        ...recentExpenses.slice(0, 5).map(e => ({
-          category: e.category,
-          amount: Math.round(Number(e.amount || 0)),
-          date: e.expense_date
-        })),
-        ...recentTransactions.filter(t => t.type === 'expense').slice(0, 5).map(t => ({
-          category: t.category,
-          amount: Math.round(Number(t.amount || 0)),
-          date: t.transaction_date
-        }))
-      ].slice(0, 10),
-      goalProgress: financialData.goals
-        .filter(g => g.target_amount && !isNaN(Number(g.target_amount)))
-        .map(g => ({
-          title: g.title,
-          progress: Number(g.target_amount) > 0 ? Math.round((Number(g.current_amount || 0) / Number(g.target_amount)) * 100) : 0,
-          current: Math.round(Number(g.current_amount || 0)),
-          target: Math.round(Number(g.target_amount))
-        })),
-      avgMonthlySalary: Math.round(avgMonthlySalary),
-      recentSalaryCount: recentSalaries.length,
+      goalProgress: goalProgress,
       dataQuality: {
         hasTransactions: financialData.transactions.length > 0,
         hasExpenses: financialData.expenses.length > 0,
         hasSalaries: financialData.salaries.length > 0,
         hasBudgets: financialData.budgets.length > 0,
         hasGoals: financialData.goals.length > 0,
-        dataCompleteness: {
-          totalRecords: financialData.salaries.length + financialData.expenses.length + financialData.transactions.length,
-          hasRecentData: recentTransactions.length > 0 || recentExpenses.length > 0
-        }
+        incomeSource: salaryIncome > 0 ? 'salary_records' : 'transactions',
+        totalRecords: financialData.salaries.length + financialData.expenses.length + financialData.transactions.length
       }
     };
 
-    console.log('Data for AI:', dataForAI);
+    console.log('Final data for AI:', dataForAI);
 
-    const systemPrompt = `You are a financial insights AI for an Indian user. Analyze the user's financial data and provide 3-4 key insights as an array of insight objects. Each insight should have:
-- type: "positive", "warning", or "suggestion"
-- title: Short descriptive title (max 4 words)
-- description: 1-2 sentence explanation with specific details from their data
-- metric: relevant number/percentage if applicable (ALWAYS use ₹ for currency, NEVER use $ or any other currency symbol)
+    // Enhanced system prompt with stricter requirements
+    const systemPrompt = `You are a financial insights AI for an Indian user. Analyze the provided financial data and generate EXACTLY 4 insights as a JSON array.
 
-CRITICAL REQUIREMENTS:
-1. ALL currency amounts MUST use Indian Rupee symbol (₹) and proper formatting with commas for large numbers (e.g., ₹1,35,284)
-2. ACCURACY IS PARAMOUNT - Only provide insights based on ACTUAL calculated data from the provided financial summary
-3. Use the EXACT numbers provided in the data - do not estimate or approximate
-4. Focus on actionable insights about spending patterns, savings rate, and category-specific observations
-5. If the user has no data in a category (like budgets or goals), don't mention those categories
-6. Base spending observations on the categoryBreakdown provided
-7. Savings rate calculation: (₹${dataForAI.netSavings} / ₹${dataForAI.totalIncome}) × 100 = ${dataForAI.savingsRate}%
+CRITICAL FORMATTING REQUIREMENTS:
+1. ALWAYS use ₹ symbol for ALL currency amounts (NEVER use $ or any other symbol)
+2. Format large amounts with Indian comma system: ₹1,35,284 (not ₹135,284)
+3. Use EXACT numbers from the provided data - do not estimate or round differently
+4. Each insight must have: type, title, description, metric
 
-Key Financial Data:
-- Total Income: ₹${dataForAI.totalIncome}
-- Total Expenses: ₹${dataForAI.totalExpenses}  
-- Net Savings: ₹${dataForAI.netSavings}
+EXACT DATA TO USE:
+- Total Income: ₹${dataForAI.totalIncome.toLocaleString('en-IN')}
+- Total Expenses: ₹${dataForAI.totalExpenses.toLocaleString('en-IN')}
+- Net Savings: ₹${dataForAI.netSavings.toLocaleString('en-IN')}
 - Savings Rate: ${dataForAI.savingsRate}%
-- Top Expense Categories: ${dataForAI.categoryBreakdown.map(([cat, amt]) => `${cat}: ₹${amt}`).join(', ')}
 
-Data context: ${JSON.stringify(dataForAI.dataQuality)}
+TOP EXPENSE CATEGORIES:
+${dataForAI.categoryBreakdown.map(([cat, amt]) => `${cat}: ₹${amt.toLocaleString('en-IN')}`).join('\n')}
 
-Respond with ONLY a valid JSON array of insight objects, no markdown formatting.`;
+INSIGHT TYPES:
+- "positive": for good financial indicators (savings rate >15%, low high-priority expenses)
+- "warning": for concerning patterns (savings rate <10%, high discretionary spending)
+- "suggestion": for actionable improvements
+
+TITLE RULES: Maximum 4 words, descriptive
+DESCRIPTION RULES: 1-2 sentences with specific amounts and percentages from data
+METRIC RULES: Always include relevant ₹ amounts or percentages
+
+Generate insights about:
+1. Savings rate analysis
+2. Highest expense category concerns/observations
+3. Budget utilization or spending patterns
+4. Goal progress or financial recommendations
+
+Respond with ONLY valid JSON array - no markdown, no explanations.`;
 
     console.log('Making request to OpenAI API...');
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -229,10 +228,10 @@ Respond with ONLY a valid JSON array of insight objects, no markdown formatting.
         model: 'gpt-4o',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Analyze this financial data: ${JSON.stringify(dataForAI)}` }
+          { role: 'user', content: `Generate 4 financial insights for this data: ${JSON.stringify(dataForAI)}` }
         ],
-        temperature: 0.1,
-        max_tokens: 800,
+        temperature: 0.1, // Very low temperature for consistency
+        max_tokens: 1000,
       }),
     });
 
@@ -247,35 +246,57 @@ Respond with ONLY a valid JSON array of insight objects, no markdown formatting.
     
     let content = data.choices[0].message.content;
     
-    // Clean up markdown formatting if present
-    content = content.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+    // Enhanced content cleaning
+    content = content
+      .replace(/```json\s*/g, '')
+      .replace(/```\s*/g, '')
+      .replace(/^\s*`+|`+\s*$/g, '')
+      .trim();
     
     console.log('Cleaned content:', content);
     
-    const insights = JSON.parse(content);
-
-    return new Response(JSON.stringify({ 
-      insights, 
-      summary: dataForAI,
-      debug: {
-        totalRecords: {
-          salaries: financialData.salaries.length,
-          expenses: financialData.expenses.length,
-          transactions: financialData.transactions.length,
-          budgets: financialData.budgets.length,
-          goals: financialData.goals.length
-        },
-        calculations: {
-          totalIncome,
-          totalExpenses,
-          netSavings,
-          savingsRate: savingsRate.toFixed(1) + '%',
-          topCategories: Object.entries(categoryExpenses).sort(([,a], [,b]) => b - a).slice(0, 5)
-        }
+    try {
+      const insights = JSON.parse(content);
+      
+      // Validate insights structure
+      if (!Array.isArray(insights) || insights.length !== 4) {
+        throw new Error('Invalid insights format - expected array of 4 insights');
       }
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+      
+      // Validate each insight
+      insights.forEach((insight, index) => {
+        if (!insight.type || !insight.title || !insight.description) {
+          throw new Error(`Invalid insight at index ${index} - missing required fields`);
+        }
+      });
+
+      return new Response(JSON.stringify({ 
+        insights, 
+        summary: dataForAI,
+        debug: {
+          calculationMethod: {
+            income: dataForAI.dataQuality.incomeSource,
+            expenseCombination: 'legacy + transactions',
+            deduplication: 'salary prioritized over transaction income'
+          },
+          validation: {
+            totalIncome,
+            totalExpenses,
+            netSavings,
+            savingsRate: savingsRate.toFixed(1) + '%',
+            categoryCount: Object.keys(categoryExpenses).length
+          }
+        }
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+      
+    } catch (parseError) {
+      console.error('JSON parsing error:', parseError);
+      console.error('Raw content that failed to parse:', content);
+      throw new Error(`Failed to parse AI response: ${parseError.message}`);
+    }
+    
   } catch (error) {
     console.error('Error in financial-insights function:', error);
     return new Response(JSON.stringify({ 
