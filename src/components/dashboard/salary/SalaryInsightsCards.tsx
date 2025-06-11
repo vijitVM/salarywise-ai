@@ -2,12 +2,11 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, TrendingUp, BarChart3, PieChart, Calculator } from 'lucide-react';
+import { ChevronLeft, ChevronRight, TrendingUp, BarChart3, PieChart } from 'lucide-react';
 import { SalaryTrendChart } from '@/components/charts/SalaryTrendChart';
 import { SalaryGrowthChart } from '@/components/charts/SalaryGrowthChart';
 import { MonthlyComparisonChart } from '@/components/charts/MonthlyComparisonChart';
 import { BonusAnalyticsChart } from '@/components/charts/BonusAnalyticsChart';
-import { TaxCalculatorCard } from '@/components/tax/TaxCalculatorCard';
 import { SalaryRecord, MonthlyExpectedSalary } from './types';
 
 interface SalaryInsightsCardsProps {
@@ -46,13 +45,6 @@ export const SalaryInsightsCards = ({ salaryRecords, monthlyExpectedSalaries }: 
       description: 'Detailed analysis of your bonus payments',
       icon: PieChart,
       component: <BonusAnalyticsChart salaryRecords={salaryRecords} />
-    },
-    {
-      id: 'tax',
-      title: 'Tax Calculator',
-      description: 'Calculate your income tax based on current earnings',
-      icon: Calculator,
-      component: <TaxCalculatorCard salaryRecords={salaryRecords} />
     }
   ];
 
