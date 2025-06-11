@@ -7,7 +7,7 @@ import { BudgetManager } from './BudgetManager';
 import { FinancialGoals } from './FinancialGoals';
 import { Header } from '../layout/Header';
 import { FloatingChatWidget } from '../ai/FloatingChatWidget';
-import { TrendingUp, DollarSign, Target, PieChart } from 'lucide-react';
+import { TrendingUp, IndianRupee, Target, PieChart } from 'lucide-react';
 
 export const Dashboard = () => {
   return (
@@ -41,7 +41,7 @@ export const Dashboard = () => {
               value="expenses"
               className="flex items-center gap-1 sm:gap-2 transition-all duration-200 data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-pink-600 data-[state=active]:text-white text-xs sm:text-sm py-2 sm:py-0"
             >
-              <DollarSign className="h-3 w-3 sm:h-4 sm:w-4" />
+              <IndianRupee className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Expenses</span>
               <span className="sm:hidden">Spend</span>
             </TabsTrigger>
