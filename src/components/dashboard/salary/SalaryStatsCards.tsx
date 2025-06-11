@@ -39,6 +39,11 @@ export const SalaryStatsCards = ({
 
   const isCurrentMonth = viewMonth === format(new Date(), 'yyyy-MM');
 
+  // Calculate salary amount FOR the current month (not received during)
+  const currentMonthSalaryAmount = salaryRecords
+    .filter(record => record.salary_month === format(new Date(), 'yyyy-MM') && !record.is_bonus)
+    .reduce((sum, record) => sum + record.amount, 0);
+
   return (
     <div className="space-y-6">
       {/* Month Selector */}
@@ -66,10 +71,10 @@ export const SalaryStatsCards = ({
           viewMonthStats={viewMonthStats}
         />
 
-        {/* Salary for Month Card - now shows total received */}
+        {/* Salary for Month Card - shows salary FOR that month */}
         <SalaryForMonthCard
           viewMonth={viewMonth}
-          totalReceivedInMonth={isCurrentMonth ? currentMonthTotal : viewMonthStats.totalReceivedInMonth}
+          salaryForViewMonth={isCurrentMonth ? currentMonthSalaryAmount : viewMonthStats.salaryForViewMonth}
           expectedSalary={isCurrentMonth ? expectedSalary : viewMonthStats.expectedAmount}
         />
 

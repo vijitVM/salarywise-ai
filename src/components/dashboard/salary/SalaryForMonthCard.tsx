@@ -5,13 +5,13 @@ import { format, parseISO } from 'date-fns';
 
 interface SalaryForMonthCardProps {
   viewMonth: string;
-  totalReceivedInMonth: number;
+  salaryForViewMonth: number;
   expectedSalary: number;
 }
 
 export const SalaryForMonthCard = ({
   viewMonth,
-  totalReceivedInMonth,
+  salaryForViewMonth,
   expectedSalary
 }: SalaryForMonthCardProps) => {
   return (
@@ -23,13 +23,13 @@ export const SalaryForMonthCard = ({
         <Calendar className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">₹{totalReceivedInMonth.toLocaleString()}</div>
+        <div className="text-2xl font-bold">₹{salaryForViewMonth.toLocaleString()}</div>
         <p className="text-xs text-muted-foreground">
           vs ₹{expectedSalary.toLocaleString()} expected
         </p>
-        {expectedSalary > 0 && totalReceivedInMonth !== expectedSalary && (
+        {expectedSalary > 0 && salaryForViewMonth !== expectedSalary && (
           <p className="text-xs text-blue-600 mt-1">
-            {totalReceivedInMonth > expectedSalary ? 'Excess' : 'Gap'}: ₹{Math.abs(expectedSalary - totalReceivedInMonth).toLocaleString()}
+            {salaryForViewMonth > expectedSalary ? 'Excess' : 'Gap'}: ₹{Math.abs(expectedSalary - salaryForViewMonth).toLocaleString()}
           </p>
         )}
       </CardContent>

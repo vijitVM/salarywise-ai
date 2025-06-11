@@ -14,12 +14,12 @@ export const useSalaryViewStats = (
     );
     const expectedAmount = viewMonthExpected?.expected_amount || 0;
 
-    // Find salary record for the viewed month (salary_month matches viewMonth)
-    const salaryForViewMonth = salaryRecords.find(record => 
-      record.salary_month === viewMonth && !record.is_bonus
-    );
+    // Calculate total received FOR the view month (salary_month matches viewMonth)
+    const salaryForViewMonth = salaryRecords
+      .filter(record => record.salary_month === viewMonth && !record.is_bonus)
+      .reduce((sum, record) => sum + record.amount, 0);
 
-    // Calculate total received during the view month period (all payments received in that month)
+    // Calculate total received DURING the view month period (all payments received in that month)
     const viewMonthStart = startOfMonth(parseISO(viewMonth + '-01'));
     const viewMonthEnd = endOfMonth(parseISO(viewMonth + '-01'));
     
@@ -46,15 +46,14 @@ export const useSalaryViewStats = (
 
     return {
       expectedAmount,
-      receivedAmount: salaryForViewMonth?.amount || 0,
-      totalReceivedInMonth,
+      salaryForViewMonth, // Amount received FOR this month (by salary_month)
+      totalReceivedInMonth, // Amount received DURING this month (by received_date)
       paymentsCount,
       shortfall,
       isComplete,
       isMissing,
       isIncomplete,
-      isExcess,
-      salaryRecord: salaryForViewMonth
+      isExcess
     };
   }, [viewMonth, monthlyExpectedSalaries, salaryRecords]);
 };
