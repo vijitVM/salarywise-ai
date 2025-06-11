@@ -1,5 +1,4 @@
 
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
@@ -227,7 +226,7 @@ Respond with ONLY a valid JSON array of insight objects, no markdown formatting.
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: `Analyze this financial data: ${JSON.stringify(dataForAI)}` }
@@ -288,4 +287,3 @@ Respond with ONLY a valid JSON array of insight objects, no markdown formatting.
     });
   }
 });
-
