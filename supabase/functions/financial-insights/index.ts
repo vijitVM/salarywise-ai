@@ -66,6 +66,18 @@ serve(async (req) => {
       percentage: (budget.current_spent / budget.monthly_limit) * 100
     }));
 
+    // Monthly salary breakdown
+    const monthlySalaries = financialData.salaries.reduce((acc, salary) => {
+      const month = salary.salary_month;
+      if (!acc[month]) {
+        acc[month] = { total: 0, count: 0, records: [] };
+      }
+      acc[month].total += Number(salary.amount);
+      acc[month].count += 1;
+      acc[month].records.push(salary);
+      return acc;
+    }, {} as Record<string, { total: number; count: number; records: any[] }>);
+
     const dataForAI = {
       totalIncome,
       totalExpenses,
@@ -78,18 +90,23 @@ serve(async (req) => {
       goalProgress: financialData.goals.map(g => ({
         title: g.title,
         progress: ((g.current_amount / g.target_amount) * 100).toFixed(1)
+      })),
+      monthlySalaryBreakdown: Object.entries(monthlySalaries).map(([month, data]) => ({
+        month,
+        total: data.total,
+        count: data.count
       }))
     };
 
     const systemPrompt = `You are a financial insights AI. Analyze the user's financial data and provide 3-4 key insights as an array of insight objects. Each insight should have:
 - type: "positive", "warning", or "suggestion"
 - title: Short descriptive title
-- description: 1-2 sentence explanation
+- description: 1-2 sentence explanation with specific details from their data
 - metric: relevant number/percentage if applicable
 
-Focus on actionable insights about spending patterns, budget performance, savings rate, and goal progress.
+Focus on actionable insights about spending patterns, budget performance, savings rate, goal progress, and salary trends. Use specific numbers from their data to make insights meaningful.
 
-Respond with ONLY a valid JSON array of insight objects.`;
+Respond with ONLY a valid JSON array of insight objects, no markdown formatting.`;
 
     console.log('Making request to OpenAI API...');
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -118,7 +135,14 @@ Respond with ONLY a valid JSON array of insight objects.`;
     const data = await response.json();
     console.log('OpenAI response received successfully');
     
-    const insights = JSON.parse(data.choices[0].message.content);
+    let content = data.choices[0].message.content;
+    
+    // Clean up markdown formatting if present
+    content = content.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+    
+    console.log('Cleaned content:', content);
+    
+    const insights = JSON.parse(content);
 
     return new Response(JSON.stringify({ insights, summary: dataForAI }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
