@@ -6,8 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Plus, TrendingUp, TrendingDown, Calendar, IndianRupee, Filter } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { Plus, TrendingUp, TrendingDown, Calendar, IndianRupee, Filter, ChevronDown } from 'lucide-react';
+import { format, parseISO, startOfMonth, endOfMonth, isSameMonth } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -29,6 +29,7 @@ export const TransactionTracker = () => {
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
+  const [selectedMonth, setSelectedMonth] = useState<string>('all');
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -44,12 +45,25 @@ export const TransactionTracker = () => {
   }, []);
 
   useEffect(() => {
-    if (typeFilter === 'all') {
-      setFilteredTransactions(transactions);
-    } else {
-      setFilteredTransactions(transactions.filter(t => t.type === typeFilter));
+    let filtered = transactions;
+
+    // Filter by type
+    if (typeFilter !== 'all') {
+      filtered = filtered.filter(t => t.type === typeFilter);
     }
-  }, [transactions, typeFilter]);
+
+    // Filter by month
+    if (selectedMonth !== 'all') {
+      const [year, month] = selectedMonth.split('-');
+      filtered = filtered.filter(t => {
+        const transactionDate = parseISO(t.transaction_date);
+        return transactionDate.getFullYear() === parseInt(year) && 
+               transactionDate.getMonth() === parseInt(month) - 1;
+      });
+    }
+
+    setFilteredTransactions(filtered);
+  }, [transactions, typeFilter, selectedMonth]);
 
   const fetchTransactions = async () => {
     try {
@@ -130,7 +144,26 @@ export const TransactionTracker = () => {
     setCategory(suggestedCategory);
   };
 
-  // Calculate stats
+  // Get available months from transactions
+  const getAvailableMonths = () => {
+    const months = new Set<string>();
+    transactions.forEach(transaction => {
+      const date = parseISO(transaction.transaction_date);
+      const monthKey = format(date, 'yyyy-MM');
+      months.add(monthKey);
+    });
+    return Array.from(months).sort().reverse();
+  };
+
+  // Calculate stats for filtered transactions
+  const getFilteredStats = () => {
+    const totalIncome = filteredTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+    const totalExpenses = filteredTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+    const netFlow = totalIncome - totalExpenses;
+    return { totalIncome, totalExpenses, netFlow };
+  };
+
+  // Calculate stats for all transactions
   const totalIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
   const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
   const netFlow = totalIncome - totalExpenses;
@@ -145,6 +178,8 @@ export const TransactionTracker = () => {
   const currentMonthIncome = currentMonthTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
   const currentMonthExpenses = currentMonthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
   const currentMonthNet = currentMonthIncome - currentMonthExpenses;
+
+  const filteredStats = getFilteredStats();
 
   const getIncomeCategories = () => [
     'Salary', 'Freelance', 'Investment Returns', 'Rental Income', 
@@ -233,6 +268,20 @@ export const TransactionTracker = () => {
               <CardDescription>Track and manage your income and expenses</CardDescription>
             </div>
             <div className="flex gap-2">
+              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                <SelectTrigger className="w-40">
+                  <Calendar className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Select month" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Months</SelectItem>
+                  {getAvailableMonths().map(month => (
+                    <SelectItem key={month} value={month}>
+                      {format(parseISO(`${month}-01`), 'MMM yyyy')}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Select value={typeFilter} onValueChange={(value: 'all' | 'income' | 'expense') => setTypeFilter(value)}>
                 <SelectTrigger className="w-32">
                   <Filter className="h-4 w-4 mr-2" />
@@ -337,9 +386,36 @@ export const TransactionTracker = () => {
           </div>
         </CardHeader>
         <CardContent>
+          {/* Monthly Summary when a specific month is selected */}
+          {selectedMonth !== 'all' && (
+            <div className="mb-6 p-4 bg-muted/50 rounded-lg">
+              <h3 className="font-medium mb-3">
+                {format(parseISO(`${selectedMonth}-01`), 'MMMM yyyy')} Summary
+              </h3>
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div className="text-center">
+                  <div className="text-green-600 font-semibold">₹{filteredStats.totalIncome.toLocaleString()}</div>
+                  <div className="text-muted-foreground">Income</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-red-600 font-semibold">₹{filteredStats.totalExpenses.toLocaleString()}</div>
+                  <div className="text-muted-foreground">Expenses</div>
+                </div>
+                <div className="text-center">
+                  <div className={`font-semibold ${filteredStats.netFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    ₹{filteredStats.netFlow.toLocaleString()}
+                  </div>
+                  <div className="text-muted-foreground">Net</div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {filteredTransactions.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              No {typeFilter === 'all' ? 'transactions' : typeFilter} recorded yet. Add your first transaction to get started!
+              No {typeFilter === 'all' ? 'transactions' : typeFilter} recorded yet
+              {selectedMonth !== 'all' && ` for ${format(parseISO(`${selectedMonth}-01`), 'MMM yyyy')}`}. 
+              Add your first transaction to get started!
             </div>
           ) : (
             <div className="space-y-4">
