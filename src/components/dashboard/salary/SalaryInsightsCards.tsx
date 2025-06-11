@@ -1,8 +1,12 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { SalaryRecord, MonthlyExpectedSalary } from './types';
 import { SalaryTrendChart } from '@/components/charts/SalaryTrendChart';
-import { TrendingUp, TrendingDown, Calendar, IndianRupee } from 'lucide-react';
+import { SalaryGrowthChart } from '@/components/charts/SalaryGrowthChart';
+import { MonthlyComparisonChart } from '@/components/charts/MonthlyComparisonChart';
+import { BonusAnalyticsChart } from '@/components/charts/BonusAnalyticsChart';
+import { TrendingUp, TrendingDown, Calendar, IndianRupee, BarChart3, PieChart, Target } from 'lucide-react';
 import { format, subMonths, startOfMonth } from 'date-fns';
 
 interface SalaryInsightsCardsProps {
@@ -102,14 +106,68 @@ export const SalaryInsightsCards = ({ salaryRecords, monthlyExpectedSalaries }: 
         </Card>
       </div>
 
-      {/* Salary Trend Chart */}
+      {/* Insights Carousel */}
       <Card>
         <CardHeader>
-          <CardTitle>Salary Trend</CardTitle>
-          <p className="text-sm text-muted-foreground">Monthly salary amounts over time</p>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            Financial Insights
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">Navigate through different analytics views</p>
         </CardHeader>
         <CardContent>
-          <SalaryTrendChart salaryRecords={salaryRecords} />
+          <Carousel className="w-full">
+            <CarouselContent>
+              {/* Salary Trend Chart */}
+              <CarouselItem>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <TrendingUp className="h-4 w-4 text-blue-600" />
+                    <h3 className="text-lg font-semibold">Salary Trend</h3>
+                  </div>
+                  <SalaryTrendChart salaryRecords={salaryRecords} />
+                </div>
+              </CarouselItem>
+
+              {/* Salary Growth Chart */}
+              <CarouselItem>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Target className="h-4 w-4 text-green-600" />
+                    <h3 className="text-lg font-semibold">Salary Growth Analysis</h3>
+                  </div>
+                  <SalaryGrowthChart salaryRecords={salaryRecords} />
+                </div>
+              </CarouselItem>
+
+              {/* Monthly Comparison */}
+              <CarouselItem>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <BarChart3 className="h-4 w-4 text-purple-600" />
+                    <h3 className="text-lg font-semibold">Expected vs Actual</h3>
+                  </div>
+                  <MonthlyComparisonChart 
+                    salaryRecords={salaryRecords} 
+                    monthlyExpectedSalaries={monthlyExpectedSalaries} 
+                  />
+                </div>
+              </CarouselItem>
+
+              {/* Bonus Analytics */}
+              <CarouselItem>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <PieChart className="h-4 w-4 text-orange-600" />
+                    <h3 className="text-lg font-semibold">Bonus Analytics</h3>
+                  </div>
+                  <BonusAnalyticsChart salaryRecords={salaryRecords} />
+                </div>
+              </CarouselItem>
+            </CarouselContent>
+            <CarouselPrevious />
+            <CarouselNext />
+          </Carousel>
         </CardContent>
       </Card>
     </div>
