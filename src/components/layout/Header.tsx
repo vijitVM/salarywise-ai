@@ -1,7 +1,6 @@
-
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { LogOut, User } from 'lucide-react';
+import { LogOut, User, TrendingUp } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { DataExportDialog } from '@/components/export/DataExportDialog';
 import { useSalaryData } from '@/components/dashboard/salary/useSalaryData';
@@ -25,11 +24,7 @@ export const Header = () => {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg">
-              <img 
-                src="/lovable-uploads/aaf12392-55c3-4334-9df5-8e8e28dc37f1.png" 
-                alt="SalaryWise AI Logo" 
-                className="h-5 w-5 object-contain"
-              />
+              <TrendingUp className="h-5 w-5 text-white" />
             </div>
             <div>
               <h1 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-gray-100 dark:to-gray-400 bg-clip-text text-transparent">
