@@ -7,8 +7,20 @@ import { SalaryRecordsList } from './salary/SalaryRecordsList';
 import { format } from 'date-fns';
 
 export const SalaryOverview = () => {
-  const { salaryRecords, profile, loading, addSalaryRecord, updateExpectedSalary } = useSalaryData();
-  const { totalEarnings, monthlyStats } = useSalaryCalculations(salaryRecords, profile);
+  const { 
+    salaryRecords, 
+    profile, 
+    monthlyExpectedSalaries, 
+    loading, 
+    addSalaryRecord, 
+    updateMonthlyExpectedSalary 
+  } = useSalaryData();
+  
+  const { totalEarnings, monthlyStats } = useSalaryCalculations(
+    salaryRecords, 
+    profile, 
+    monthlyExpectedSalaries
+  );
 
   // Dialog states
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -18,12 +30,9 @@ export const SalaryOverview = () => {
   const [amount, setAmount] = useState('');
   const [payPeriod, setPayPeriod] = useState('monthly');
   const [receivedDate, setReceivedDate] = useState('');
-  const [salaryMonth, setSalaryMonth] = useState(format(new Date(), 'yyyy-MM')); // Default to current month
+  const [salaryMonth, setSalaryMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [description, setDescription] = useState('');
   const [isBonus, setIsBonus] = useState(false);
-  const [expectedMonthlySalary, setExpectedMonthlySalary] = useState(
-    profile?.expected_monthly_salary?.toString() || ''
-  );
 
   const handleAddSalaryRecord = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,11 +56,8 @@ export const SalaryOverview = () => {
     setIsDialogOpen(false);
   };
 
-  const handleUpdateExpectedSalary = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    await updateExpectedSalary(parseFloat(expectedMonthlySalary));
-    setIsSalaryDialogOpen(false);
+  const handleUpdateMonthlyExpectedSalary = async (monthYear: string, amount: number) => {
+    await updateMonthlyExpectedSalary(monthYear, amount);
   };
 
   if (loading) {
@@ -64,11 +70,10 @@ export const SalaryOverview = () => {
         monthlyStats={monthlyStats}
         totalEarnings={totalEarnings}
         totalRecords={salaryRecords.length}
-        expectedMonthlySalary={expectedMonthlySalary}
-        setExpectedMonthlySalary={setExpectedMonthlySalary}
+        monthlyExpectedSalaries={monthlyExpectedSalaries}
         isSalaryDialogOpen={isSalaryDialogOpen}
         setIsSalaryDialogOpen={setIsSalaryDialogOpen}
-        onUpdateExpectedSalary={handleUpdateExpectedSalary}
+        onUpdateMonthlyExpectedSalary={handleUpdateMonthlyExpectedSalary}
       />
 
       <SalaryRecordsList

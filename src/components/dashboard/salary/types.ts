@@ -15,6 +15,15 @@ export interface Profile {
   expected_monthly_salary: number | null;
 }
 
+export interface MonthlyExpectedSalary {
+  id: string;
+  user_id: string;
+  month_year: string;
+  expected_amount: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface MonthlyStats {
   currentMonthTotal: number;
   expectedSalary: number;

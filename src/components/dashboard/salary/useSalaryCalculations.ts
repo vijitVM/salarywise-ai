@@ -1,15 +1,25 @@
 
 import { useMemo } from 'react';
 import { parseISO, isSameMonth, isSameYear, format } from 'date-fns';
-import { SalaryRecord, Profile, MonthlyStats } from './types';
+import { SalaryRecord, Profile, MonthlyStats, MonthlyExpectedSalary } from './types';
 
-export const useSalaryCalculations = (salaryRecords: SalaryRecord[], profile: Profile | null) => {
+export const useSalaryCalculations = (
+  salaryRecords: SalaryRecord[], 
+  profile: Profile | null,
+  monthlyExpectedSalaries: MonthlyExpectedSalary[]
+) => {
   return useMemo(() => {
     const totalEarnings = salaryRecords.reduce((sum, record) => sum + record.amount, 0);
     
     const currentDate = new Date();
     const currentMonthYear = format(currentDate, 'yyyy-MM');
     
+    // Find expected salary for current month
+    const currentMonthExpected = monthlyExpectedSalaries.find(
+      salary => salary.month_year === currentMonthYear
+    );
+    const expectedSalary = currentMonthExpected?.expected_amount || profile?.expected_monthly_salary || 0;
+
     // Find salary record for current month (regardless of when it was received)
     const salaryForCurrentMonth = salaryRecords.find(record => 
       record.salary_month === currentMonthYear && !record.is_bonus
@@ -22,7 +32,6 @@ export const useSalaryCalculations = (salaryRecords: SalaryRecord[], profile: Pr
     });
 
     const currentMonthTotal = currentMonthRecords.reduce((sum, record) => sum + record.amount, 0);
-    const expectedSalary = profile?.expected_monthly_salary || 0;
     
     // Calculate remaining balance for current month
     const currentMonthSalaryAmount = salaryForCurrentMonth?.amount || 0;
@@ -58,5 +67,5 @@ export const useSalaryCalculations = (salaryRecords: SalaryRecord[], profile: Pr
       totalEarnings,
       monthlyStats,
     };
-  }, [salaryRecords, profile]);
+  }, [salaryRecords, profile, monthlyExpectedSalaries]);
 };

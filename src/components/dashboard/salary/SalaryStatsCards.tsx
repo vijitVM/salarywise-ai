@@ -5,37 +5,46 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { IndianRupee, Calendar, AlertCircle, CheckCircle, TrendingUp, Clock } from 'lucide-react';
-import { MonthlyStats } from './types';
+import { MonthlyStats, MonthlyExpectedSalary } from './types';
 import { format, parseISO } from 'date-fns';
+import { useState } from 'react';
 
 interface SalaryStatsCardsProps {
   monthlyStats: MonthlyStats;
   totalEarnings: number;
   totalRecords: number;
-  expectedMonthlySalary: string;
-  setExpectedMonthlySalary: (value: string) => void;
+  monthlyExpectedSalaries: MonthlyExpectedSalary[];
   isSalaryDialogOpen: boolean;
   setIsSalaryDialogOpen: (open: boolean) => void;
-  onUpdateExpectedSalary: (e: React.FormEvent) => void;
+  onUpdateMonthlyExpectedSalary: (monthYear: string, amount: number) => void;
 }
 
 export const SalaryStatsCards = ({
   monthlyStats,
   totalEarnings,
   totalRecords,
-  expectedMonthlySalary,
-  setExpectedMonthlySalary,
+  monthlyExpectedSalaries,
   isSalaryDialogOpen,
   setIsSalaryDialogOpen,
-  onUpdateExpectedSalary
+  onUpdateMonthlyExpectedSalary
 }: SalaryStatsCardsProps) => {
   const { currentMonthTotal, expectedSalary, remainingBalance, currentMonthRecords, salaryForCurrentMonth, pendingSalaryMonths } = monthlyStats;
+  
+  const [expectedMonthlySalary, setExpectedMonthlySalary] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
+
+  const handleUpdateExpectedSalary = (e: React.FormEvent) => {
+    e.preventDefault();
+    onUpdateMonthlyExpectedSalary(selectedMonth, parseFloat(expectedMonthlySalary));
+    setExpectedMonthlySalary('');
+    setIsSalaryDialogOpen(false);
+  };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Expected Monthly</CardTitle>
+          <CardTitle className="text-sm font-medium">Expected This Month</CardTitle>
           <IndianRupee className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
@@ -43,19 +52,29 @@ export const SalaryStatsCards = ({
           <Dialog open={isSalaryDialogOpen} onOpenChange={setIsSalaryDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="link" size="sm" className="p-0 h-auto text-xs">
-                {expectedSalary ? 'Update' : 'Set'} expected salary
+                Set expected salary
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Set Expected Monthly Salary</DialogTitle>
                 <DialogDescription>
-                  Enter your expected monthly salary to track balance
+                  Set expected salary for a specific month (useful when you get hikes)
                 </DialogDescription>
               </DialogHeader>
-              <form onSubmit={onUpdateExpectedSalary} className="space-y-4">
+              <form onSubmit={handleUpdateExpectedSalary} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="expectedSalary">Monthly Salary (₹)</Label>
+                  <Label htmlFor="selectedMonth">Month</Label>
+                  <Input
+                    id="selectedMonth"
+                    type="month"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="expectedSalary">Expected Salary (₹)</Label>
                   <Input
                     id="expectedSalary"
                     type="number"
