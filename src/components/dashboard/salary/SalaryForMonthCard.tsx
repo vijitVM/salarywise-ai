@@ -2,17 +2,16 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
-import { SalaryRecord } from './types';
 
 interface SalaryForMonthCardProps {
   viewMonth: string;
-  salaryForCurrentMonth: SalaryRecord | undefined;
+  totalReceivedInMonth: number;
   expectedSalary: number;
 }
 
 export const SalaryForMonthCard = ({
   viewMonth,
-  salaryForCurrentMonth,
+  totalReceivedInMonth,
   expectedSalary
 }: SalaryForMonthCardProps) => {
   return (
@@ -24,13 +23,13 @@ export const SalaryForMonthCard = ({
         <Calendar className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">₹{(salaryForCurrentMonth?.amount || 0).toLocaleString()}</div>
+        <div className="text-2xl font-bold">₹{totalReceivedInMonth.toLocaleString()}</div>
         <p className="text-xs text-muted-foreground">
           vs ₹{expectedSalary.toLocaleString()} expected
         </p>
-        {expectedSalary > 0 && (salaryForCurrentMonth?.amount || 0) !== expectedSalary && (
+        {expectedSalary > 0 && totalReceivedInMonth !== expectedSalary && (
           <p className="text-xs text-blue-600 mt-1">
-            {(salaryForCurrentMonth?.amount || 0) > expectedSalary ? 'Excess' : 'Gap'}: ₹{Math.abs(expectedSalary - (salaryForCurrentMonth?.amount || 0)).toLocaleString()}
+            {totalReceivedInMonth > expectedSalary ? 'Excess' : 'Gap'}: ₹{Math.abs(expectedSalary - totalReceivedInMonth).toLocaleString()}
           </p>
         )}
       </CardContent>

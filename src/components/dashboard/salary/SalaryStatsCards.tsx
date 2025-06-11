@@ -66,10 +66,10 @@ export const SalaryStatsCards = ({
           viewMonthStats={viewMonthStats}
         />
 
-        {/* Salary for Month Card */}
+        {/* Salary for Month Card - now shows total received */}
         <SalaryForMonthCard
           viewMonth={viewMonth}
-          salaryForCurrentMonth={isCurrentMonth ? salaryForCurrentMonth : viewMonthStats.salaryRecord}
+          totalReceivedInMonth={isCurrentMonth ? currentMonthTotal : viewMonthStats.totalReceivedInMonth}
           expectedSalary={isCurrentMonth ? expectedSalary : viewMonthStats.expectedAmount}
         />
 
