@@ -56,6 +56,7 @@ export const SalaryStatsCards = ({
     );
     const expectedAmount = viewMonthExpected?.expected_amount || 0;
 
+    // Find salary record for the viewed month (salary_month matches viewMonth)
     const salaryForViewMonth = salaryRecords.find(record => 
       record.salary_month === viewMonth && !record.is_bonus
     );
@@ -160,7 +161,7 @@ export const SalaryStatsCards = ({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Expected {isCurrentMonth ? 'This Month' : format(parseISO(viewMonth + '-01'), 'MMM yyyy')}
+              Expected for {format(parseISO(viewMonth + '-01'), 'MMM yyyy')}
             </CardTitle>
             <IndianRupee className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -212,11 +213,11 @@ export const SalaryStatsCards = ({
           </CardContent>
         </Card>
 
-        {/* Month Salary Card - Now shows total received during the month */}
+        {/* Month Received Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              {isCurrentMonth ? 'This Month Received' : 'Month Received'}
+              Received in {format(parseISO(viewMonth + '-01'), 'MMM yyyy')}
             </CardTitle>
             {!isCurrentMonth ? (
               viewMonthStats.isComplete ? (
@@ -278,22 +279,22 @@ export const SalaryStatsCards = ({
           </CardContent>
         </Card>
 
-        {/* Total Received Card */}
+        {/* Salary for Month Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              {isCurrentMonth ? 'Month vs Expected' : 'Month vs Expected'}
+              Salary for: {format(parseISO(viewMonth + '-01'), 'MMM yyyy')}
             </CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₹{displayStats.currentMonthTotal.toLocaleString()}</div>
+            <div className="text-2xl font-bold">₹{(displayStats.salaryForCurrentMonth?.amount || 0).toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
               vs ₹{displayStats.expectedSalary.toLocaleString()} expected
             </p>
-            {displayStats.expectedSalary > 0 && displayStats.currentMonthTotal !== displayStats.expectedSalary && (
+            {displayStats.expectedSalary > 0 && (displayStats.salaryForCurrentMonth?.amount || 0) !== displayStats.expectedSalary && (
               <p className="text-xs text-blue-600 mt-1">
-                {displayStats.currentMonthTotal > displayStats.expectedSalary ? 'Excess' : 'Gap'}: ₹{Math.abs(displayStats.expectedSalary - displayStats.currentMonthTotal).toLocaleString()}
+                {(displayStats.salaryForCurrentMonth?.amount || 0) > displayStats.expectedSalary ? 'Excess' : 'Gap'}: ₹{Math.abs(displayStats.expectedSalary - (displayStats.salaryForCurrentMonth?.amount || 0)).toLocaleString()}
               </p>
             )}
           </CardContent>
@@ -303,7 +304,7 @@ export const SalaryStatsCards = ({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              {isCurrentMonth ? 'Salary Status' : 'Month Status'}
+              {format(parseISO(viewMonth + '-01'), 'MMM yyyy')} Status
             </CardTitle>
             {isCurrentMonth ? (
               pendingSalaryMonths.length > 0 ? (
