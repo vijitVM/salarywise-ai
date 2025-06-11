@@ -78,11 +78,13 @@ serve(async (req) => {
     // Combined totals
     const totalIncome = totalSalaryIncome + transactionIncome;
     const totalExpenses = totalLegacyExpenses + transactionExpenses;
-    const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome * 100) : 0;
+    const netSavings = totalIncome - totalExpenses;
+    const savingsRate = totalIncome > 0 ? (netSavings / totalIncome * 100) : 0;
 
     console.log('Calculated totals:', {
       totalIncome,
       totalExpenses,
+      netSavings,
       savingsRate: savingsRate.toFixed(1) + '%'
     });
 
@@ -133,9 +135,14 @@ serve(async (req) => {
       return transactionDate >= thirtyDaysAgo && t.amount && !isNaN(Number(t.amount));
     });
 
+    // Monthly savings calculation
+    const monthlySavings = totalIncome > 0 ? netSavings : 0;
+
     const dataForAI = {
       totalIncome: Math.round(totalIncome),
       totalExpenses: Math.round(totalExpenses),
+      netSavings: Math.round(netSavings),
+      monthlySavings: Math.round(monthlySavings),
       savingsRate: Math.round(savingsRate * 10) / 10, // Round to 1 decimal
       categoryBreakdown: Object.entries(categoryExpenses)
         .sort(([,a], [,b]) => b - a)
@@ -143,22 +150,24 @@ serve(async (req) => {
         .map(([category, amount]) => [category, Math.round(amount)]),
       budgetStatus: budgetAnalysis,
       recentExpenses: [
-        ...financialData.expenses.slice(0, 3).map(e => ({
+        ...financialData.expenses.slice(0, 5).map(e => ({
           category: e.category,
           amount: Math.round(Number(e.amount || 0)),
           date: e.expense_date
         })),
-        ...recentTransactions.filter(t => t.type === 'expense').slice(0, 3).map(t => ({
+        ...recentTransactions.filter(t => t.type === 'expense').slice(0, 5).map(t => ({
           category: t.category,
           amount: Math.round(Number(t.amount || 0)),
           date: t.transaction_date
         }))
-      ],
+      ].slice(0, 10), // Limit to 10 recent expenses
       goalProgress: financialData.goals
         .filter(g => g.target_amount && !isNaN(Number(g.target_amount)))
         .map(g => ({
           title: g.title,
-          progress: Number(g.target_amount) > 0 ? Math.round((Number(g.current_amount || 0) / Number(g.target_amount)) * 100) : 0
+          progress: Number(g.target_amount) > 0 ? Math.round((Number(g.current_amount || 0) / Number(g.target_amount)) * 100) : 0,
+          current: Math.round(Number(g.current_amount || 0)),
+          target: Math.round(Number(g.target_amount))
         })),
       avgMonthlySalary: Math.round(avgMonthlySalary),
       recentSalaryCount: recentSalaries.length,
@@ -166,7 +175,8 @@ serve(async (req) => {
         hasTransactions: financialData.transactions.length > 0,
         hasExpenses: financialData.expenses.length > 0,
         hasSalaries: financialData.salaries.length > 0,
-        hasBudgets: financialData.budgets.length > 0
+        hasBudgets: financialData.budgets.length > 0,
+        hasGoals: financialData.goals.length > 0
       }
     };
 
@@ -179,11 +189,13 @@ serve(async (req) => {
 - metric: relevant number/percentage if applicable (ALWAYS use ₹ for currency, NEVER use $ or any other currency symbol)
 
 CRITICAL REQUIREMENTS:
-1. ALL currency amounts MUST use Indian Rupee symbol (₹) and proper formatting with commas
+1. ALL currency amounts MUST use Indian Rupee symbol (₹) and proper formatting with commas for large numbers (e.g., ₹1,35,284)
 2. Only provide insights based on actual data - if no data exists for a category, don't make assumptions
-3. Be accurate with calculations and numbers
+3. Be accurate with calculations and numbers - use the provided totals and breakdowns
 4. Focus on actionable insights about spending patterns, budget performance, savings rate, and goal progress
 5. If data seems incomplete or inconsistent, mention it appropriately
+6. Savings calculations: Total savings = Total income (₹${dataForAI.totalIncome}) - Total expenses (₹${dataForAI.totalExpenses}) = ₹${dataForAI.netSavings}
+7. Monthly savings rate = (Net savings / Total income) × 100 = ${dataForAI.savingsRate}%
 
 Data quality context: ${JSON.stringify(dataForAI.dataQuality)}
 
@@ -233,11 +245,13 @@ Respond with ONLY a valid JSON array of insight objects, no markdown formatting.
           salaries: financialData.salaries.length,
           expenses: financialData.expenses.length,
           transactions: financialData.transactions.length,
-          budgets: financialData.budgets.length
+          budgets: financialData.budgets.length,
+          goals: financialData.goals.length
         },
         calculations: {
           totalIncome,
           totalExpenses,
+          netSavings,
           savingsRate: savingsRate.toFixed(1) + '%'
         }
       }
