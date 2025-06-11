@@ -1,49 +1,127 @@
-# Welcome to your SalaryWise AI project
+# 💼 SalaryWise AI - Personal Financial Management Dashboard
 
-## Project info
+**SalaryWise AI** is a modern personal finance management app powered by AI. Built with **React**, **TypeScript**, and **Supabase**, it helps users track income, expenses, budgets, and financial goals — all wrapped in a sleek, responsive interface.
 
-**Use your preferred IDE**
+---
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected.
+## 🚀 Overview
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+SalaryWise AI offers AI-powered insights and interactive tools to help users manage their money smarter. Key features include:
 
-Follow these steps:
+- Intelligent salary and transaction tracking  
+- Category-based budgeting  
+- Long-term financial goal management  
+- AI-driven insights and expense categorization  
+- Visual dashboards and real-time analytics  
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
+---
+
+## 🧠 Key Features
+
+### 🏦 Salary Management
+- Track salary records and bonuses  
+- Monitor expected vs received payments  
+- Visualize salary growth trends  
+- Monthly comparisons and analytics  
+
+### 💰 Transaction Tracking
+- Record income and expenses  
+- Auto-categorize with AI  
+- Analytics with category breakdowns  
+- Export data as needed  
+
+### 📊 Budget Management
+- Create monthly budgets by category  
+- Track spending vs budget in real-time  
+- Visual alerts for overspending  
+
+### 🎯 Financial Goals
+- Set savings targets and deadlines  
+- Monitor goal progress visually  
+- Get AI tips to hit your targets  
+
+### 🤖 AI-Powered Insights
+- Personalized financial analysis  
+- Smart chatbot for Q&A and advice  
+- AI-assisted categorization and data entry  
+- Historical trend detection and forecasts  
+
+### 📈 Dashboards & Visualizations
+- Clean, interactive dashboards  
+- Recharts-based graphs for trends and categories  
+- Visual tracking for budgets and goals  
+
+### 🔐 User Management
+- Supabase Auth for secure sign-in  
+- Per-user data isolation  
+- Password reset & email verification  
+
+### 🎨 UI & UX
+- Responsive, mobile-friendly interface  
+- Light/dark mode with Tailwind CSS  
+- Floating AI chat assistant  
+- Intuitive tabbed navigation  
+
+---
+
+## 🛠️ Tech Stack
+
+### 🔧 Frontend
+- React 18 + TypeScript  
+- Vite for blazing-fast builds  
+- Tailwind CSS + `shadcn/ui` components  
+- React Router  
+- TanStack React Query  
+- Recharts (charts)  
+- Lucide React (icons)  
+
+### 🗄️ Backend & Database
+- Supabase (PostgreSQL, Auth, Edge Functions)  
+- Supabase RLS for data privacy  
+- Edge Functions for secure AI access  
+
+### 🧠 AI Integration
+- OpenAI GPT-4.1 for financial analysis  
+- AI-assisted categorization and insights  
+
+---
+
+## 🧩 Database Schema
+
+| Table             | Purpose                                      |
+|------------------|----------------------------------------------|
+| `salary_records` | Tracks salaries, bonuses, and history        |
+| `transactions`   | Unified income/expense ledger                |
+| `expenses`       | Legacy expense data (transitioning to `transactions`) |
+| `budgets`        | Category-based monthly spending limits       |
+| `financial_goals`| User-defined financial objectives            |
+
+---
+
+## 🔒 Security & Privacy
+
+- Row Level Security (RLS) for user data isolation  
+- Supabase Auth for secure access  
+- API secrets managed with Supabase secrets  
+- CORS-enabled Edge Functions for safe AI calls  
+
+---
+
+## 🧑‍💻 Getting Started
+
+### 🛠️ Run Locally
+
+> Prerequisite: Node.js & npm ([Install via nvm](https://github.com/nvm-sh/nvm#installing-and-updating))
+
+```bash
+# Step 1: Clone the repository
 git clone <YOUR_GIT_URL>
 
-# Step 2: Navigate to the project directory.
+# Step 2: Go to the project directory
 cd <YOUR_PROJECT_NAME>
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Step 3: Install dependencies
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Step 4: Start the development server
 npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
