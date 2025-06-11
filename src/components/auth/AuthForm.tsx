@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -91,7 +90,7 @@ export const AuthForm = () => {
               <Sparkles className="h-8 w-8 text-white" />
             </div>
             <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
-              AI Salary Tracker
+              SalaryWise AI
             </h1>
             <p className="text-gray-600 text-lg">
               Intelligent financial management powered by AI
