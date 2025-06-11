@@ -19,14 +19,14 @@ export const useSalaryViewStats = (
       .filter(record => record.salary_month === viewMonth && !record.is_bonus)
       .reduce((sum, record) => sum + record.amount, 0);
 
-    // Calculate total received DURING the view month period (all payments received in that month)
+    // Calculate total received DURING the view month period (payments actually received in that month)
     const viewMonthStart = startOfMonth(parseISO(viewMonth + '-01'));
     const viewMonthEnd = endOfMonth(parseISO(viewMonth + '-01'));
     
     const totalReceivedInMonth = salaryRecords
       .filter(record => {
         const recordDate = parseISO(record.received_date);
-        return isWithinInterval(recordDate, { start: viewMonthStart, end: viewMonthEnd });
+        return isWithinInterval(recordDate, { start: viewMonthStart, end: viewMonthEnd }) && !record.is_bonus;
       })
       .reduce((sum, record) => sum + record.amount, 0);
 
@@ -43,6 +43,18 @@ export const useSalaryViewStats = (
     const isMissing = totalReceivedInMonth === 0 && expectedAmount > 0;
     const isIncomplete = totalReceivedInMonth > 0 && totalReceivedInMonth < expectedAmount && expectedAmount > 0;
     const isExcess = totalReceivedInMonth > expectedAmount && expectedAmount > 0;
+
+    console.log(`Stats for ${viewMonth}:`, {
+      expectedAmount,
+      salaryForViewMonth,
+      totalReceivedInMonth,
+      paymentsCount,
+      shortfall,
+      isComplete,
+      isMissing,
+      isIncomplete,
+      isExcess
+    });
 
     return {
       expectedAmount,
