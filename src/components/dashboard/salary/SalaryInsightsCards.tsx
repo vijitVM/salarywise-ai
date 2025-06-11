@@ -1,13 +1,14 @@
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
-import { SalaryRecord, MonthlyExpectedSalary } from './types';
+import { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { ChevronLeft, ChevronRight, TrendingUp, BarChart3, PieChart, Calculator } from 'lucide-react';
 import { SalaryTrendChart } from '@/components/charts/SalaryTrendChart';
 import { SalaryGrowthChart } from '@/components/charts/SalaryGrowthChart';
 import { MonthlyComparisonChart } from '@/components/charts/MonthlyComparisonChart';
 import { BonusAnalyticsChart } from '@/components/charts/BonusAnalyticsChart';
-import { TrendingUp, TrendingDown, Calendar, IndianRupee, BarChart3, PieChart, Target } from 'lucide-react';
-import { format, subMonths, startOfMonth } from 'date-fns';
+import { TaxCalculatorCard } from '@/components/tax/TaxCalculatorCard';
+import { SalaryRecord, MonthlyExpectedSalary } from './types';
 
 interface SalaryInsightsCardsProps {
   salaryRecords: SalaryRecord[];
@@ -15,161 +16,98 @@ interface SalaryInsightsCardsProps {
 }
 
 export const SalaryInsightsCards = ({ salaryRecords, monthlyExpectedSalaries }: SalaryInsightsCardsProps) => {
-  // Calculate YTD earnings
-  const currentYear = new Date().getFullYear();
-  const ytdEarnings = salaryRecords
-    .filter(record => {
-      const recordYear = new Date(record.received_date).getFullYear();
-      return recordYear === currentYear && !record.is_bonus;
-    })
-    .reduce((sum, record) => sum + record.amount, 0);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Calculate average monthly salary (last 6 months)
-  const sixMonthsAgo = format(subMonths(startOfMonth(new Date()), 5), 'yyyy-MM');
-  const recentSalaries = salaryRecords
-    .filter(record => record.salary_month >= sixMonthsAgo && !record.is_bonus)
-    .reduce((acc, record) => {
-      const month = record.salary_month;
-      if (!acc[month]) acc[month] = 0;
-      acc[month] += record.amount;
-      return acc;
-    }, {} as Record<string, number>);
+  const insights = [
+    {
+      id: 'trend',
+      title: 'Salary Trend Analysis',
+      description: 'Track your salary progression over time',
+      icon: TrendingUp,
+      component: <SalaryTrendChart salaryRecords={salaryRecords} />
+    },
+    {
+      id: 'growth',
+      title: 'Salary Growth Analysis',
+      description: 'Analyze growth patterns and percentages',
+      icon: BarChart3,
+      component: <SalaryGrowthChart salaryRecords={salaryRecords} />
+    },
+    {
+      id: 'comparison',
+      title: 'Expected vs Actual Comparison',
+      description: 'Compare your expected vs actual earnings',
+      icon: BarChart3,
+      component: <MonthlyComparisonChart salaryRecords={salaryRecords} monthlyExpectedSalaries={monthlyExpectedSalaries} />
+    },
+    {
+      id: 'bonus',
+      title: 'Bonus Analytics',
+      description: 'Detailed analysis of your bonus payments',
+      icon: PieChart,
+      component: <BonusAnalyticsChart salaryRecords={salaryRecords} />
+    },
+    {
+      id: 'tax',
+      title: 'Tax Calculator',
+      description: 'Calculate your income tax based on current earnings',
+      icon: Calculator,
+      component: <TaxCalculatorCard salaryRecords={salaryRecords} />
+    }
+  ];
 
-  const avgMonthlySalary = Object.values(recentSalaries).length > 0 
-    ? Object.values(recentSalaries).reduce((sum, amount) => sum + amount, 0) / Object.values(recentSalaries).length
-    : 0;
+  const nextSlide = () => {
+    setCurrentIndex((prev) => (prev + 1) % insights.length);
+  };
 
-  // Calculate bonus earnings
-  const bonusEarnings = salaryRecords
-    .filter(record => record.is_bonus)
-    .reduce((sum, record) => sum + record.amount, 0);
+  const prevSlide = () => {
+    setCurrentIndex((prev) => (prev - 1 + insights.length) % insights.length);
+  };
 
-  // Calculate payment frequency
-  const totalPayments = salaryRecords.length;
-  const monthsWithData = new Set(salaryRecords.map(r => r.salary_month)).size;
-  const avgPaymentsPerMonth = monthsWithData > 0 ? totalPayments / monthsWithData : 0;
+  const currentInsight = insights[currentIndex];
+  const IconComponent = currentInsight.icon;
 
   return (
-    <div className="space-y-6">
-      {/* Quick Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">YTD Earnings</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₹{ytdEarnings.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              {currentYear} total
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Monthly</CardTitle>
-            <IndianRupee className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₹{Math.round(avgMonthlySalary).toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              Last 6 months
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Bonuses</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">₹{bonusEarnings.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              All time bonuses
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Payment Frequency</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{avgPaymentsPerMonth.toFixed(1)}</div>
-            <p className="text-xs text-muted-foreground">
-              Payments per month
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Insights Carousel */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
-            Financial Insights
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">Navigate through different analytics views</p>
-        </CardHeader>
-        <CardContent>
-          <Carousel className="w-full">
-            <CarouselContent>
-              {/* Salary Trend Chart */}
-              <CarouselItem>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <TrendingUp className="h-4 w-4 text-blue-600" />
-                    <h3 className="text-lg font-semibold">Salary Trend</h3>
-                  </div>
-                  <SalaryTrendChart salaryRecords={salaryRecords} />
-                </div>
-              </CarouselItem>
-
-              {/* Salary Growth Chart */}
-              <CarouselItem>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Target className="h-4 w-4 text-green-600" />
-                    <h3 className="text-lg font-semibold">Salary Growth Analysis</h3>
-                  </div>
-                  <SalaryGrowthChart salaryRecords={salaryRecords} />
-                </div>
-              </CarouselItem>
-
-              {/* Monthly Comparison */}
-              <CarouselItem>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <BarChart3 className="h-4 w-4 text-purple-600" />
-                    <h3 className="text-lg font-semibold">Expected vs Actual</h3>
-                  </div>
-                  <MonthlyComparisonChart 
-                    salaryRecords={salaryRecords} 
-                    monthlyExpectedSalaries={monthlyExpectedSalaries} 
-                  />
-                </div>
-              </CarouselItem>
-
-              {/* Bonus Analytics */}
-              <CarouselItem>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <PieChart className="h-4 w-4 text-orange-600" />
-                    <h3 className="text-lg font-semibold">Bonus Analytics</h3>
-                  </div>
-                  <BonusAnalyticsChart salaryRecords={salaryRecords} />
-                </div>
-              </CarouselItem>
-            </CarouselContent>
-            <CarouselPrevious />
-            <CarouselNext />
-          </Carousel>
-        </CardContent>
-      </Card>
-    </div>
+    <Card className="w-full">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
+              <IconComponent className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <CardTitle>{currentInsight.title}</CardTitle>
+              <CardDescription>{currentInsight.description}</CardDescription>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={prevSlide}
+              disabled={insights.length <= 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm text-muted-foreground min-w-[3rem] text-center">
+              {currentIndex + 1} / {insights.length}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={nextSlide}
+              disabled={insights.length <= 1}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="transition-all duration-300 ease-in-out">
+          {currentInsight.component}
+        </div>
+      </CardContent>
+    </Card>
   );
 };
