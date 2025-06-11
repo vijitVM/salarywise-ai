@@ -1,6 +1,5 @@
 
 import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -21,7 +20,7 @@ const formatAIResponse = (content: string) => {
   const sections = content.split(/(\d+\.\s*\*\*[^*]+\*\*)/g);
   
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {sections.map((section, index) => {
         if (!section.trim()) return null;
         
@@ -30,15 +29,15 @@ const formatAIResponse = (content: string) => {
         if (numberedMatch) {
           const [, number, title, description] = numberedMatch;
           return (
-            <div key={index} className="border-l-2 border-primary/20 pl-3 py-2">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="bg-primary/10 text-primary text-xs font-medium px-2 py-1 rounded-full">
+            <div key={index} className="border-l-2 border-primary/20 pl-2 py-1">
+              <div className="flex items-center gap-1 mb-1">
+                <span className="bg-primary/10 text-primary text-xs font-medium px-1.5 py-0.5 rounded-full">
                   {number}
                 </span>
-                <h4 className="font-semibold text-sm">{title}</h4>
+                <h4 className="font-semibold text-xs">{title}</h4>
               </div>
               {description && (
-                <p className="text-sm text-muted-foreground ml-6">{description.trim()}</p>
+                <p className="text-xs text-muted-foreground ml-5">{description.trim()}</p>
               )}
             </div>
           );
@@ -46,7 +45,7 @@ const formatAIResponse = (content: string) => {
         
         // Regular paragraph
         return (
-          <p key={index} className="text-sm leading-relaxed">
+          <p key={index} className="text-xs leading-relaxed">
             {section.trim()}
           </p>
         );
@@ -121,85 +120,75 @@ export const FinancialChatBot = () => {
   };
 
   return (
-    <Card className="h-[600px] flex flex-col">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Bot className="h-5 w-5" />
-          Financial AI Assistant
-        </CardTitle>
-        <CardDescription>
-          Ask questions about your finances and get personalized advice
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex-1 flex flex-col gap-4">
-        <ScrollArea className="flex-1 pr-4">
-          <div className="space-y-4">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex gap-3 ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div className={`flex gap-3 max-w-[85%] ${message.type === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                    message.type === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'
+    <div className="h-full flex flex-col">
+      <ScrollArea className="flex-1 pr-2">
+        <div className="space-y-3">
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex gap-2 ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              <div className={`flex gap-2 max-w-[85%] ${message.type === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  message.type === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                }`}>
+                  {message.type === 'user' ? <User className="h-3 w-3" /> : <Bot className="h-3 w-3" />}
+                </div>
+                <div className={`rounded-lg p-3 ${
+                  message.type === 'user' 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'bg-muted border'
+                }`}>
+                  {message.type === 'ai' ? (
+                    formatAIResponse(message.content)
+                  ) : (
+                    <p className="text-xs whitespace-pre-wrap">{message.content}</p>
+                  )}
+                  <p className={`text-xs opacity-70 mt-2 pt-1 border-t ${
+                    message.type === 'user' ? 'border-primary-foreground/20' : 'border-border'
                   }`}>
-                    {message.type === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
-                  </div>
-                  <div className={`rounded-lg p-4 ${
-                    message.type === 'user' 
-                      ? 'bg-primary text-primary-foreground' 
-                      : 'bg-muted border'
-                  }`}>
-                    {message.type === 'ai' ? (
-                      formatAIResponse(message.content)
-                    ) : (
-                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                    )}
-                    <p className={`text-xs opacity-70 mt-3 pt-2 border-t ${
-                      message.type === 'user' ? 'border-primary-foreground/20' : 'border-border'
-                    }`}>
-                      {message.timestamp.toLocaleTimeString()}
-                    </p>
+                    {message.timestamp.toLocaleTimeString()}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+          {isLoading && (
+            <div className="flex gap-2 justify-start">
+              <div className="flex gap-2 max-w-[85%]">
+                <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 bg-muted">
+                  <Bot className="h-3 w-3" />
+                </div>
+                <div className="rounded-lg p-3 bg-muted border">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <span className="text-xs">Thinking...</span>
                   </div>
                 </div>
               </div>
-            ))}
-            {isLoading && (
-              <div className="flex gap-3 justify-start">
-                <div className="flex gap-3 max-w-[85%]">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-muted">
-                    <Bot className="h-4 w-4" />
-                  </div>
-                  <div className="rounded-lg p-4 bg-muted border">
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span className="text-sm">Thinking...</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </ScrollArea>
-        
-        <div className="flex gap-2">
-          <Input
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Ask about your finances..."
-            disabled={isLoading}
-            className="flex-1"
-          />
-          <Button 
-            onClick={handleSendMessage}
-            disabled={!inputMessage.trim() || isLoading}
-            size="icon"
-          >
-            <Send className="h-4 w-4" />
-          </Button>
+            </div>
+          )}
         </div>
-      </CardContent>
-    </Card>
+      </ScrollArea>
+      
+      <div className="flex gap-2 mt-3">
+        <Input
+          value={inputMessage}
+          onChange={(e) => setInputMessage(e.target.value)}
+          onKeyPress={handleKeyPress}
+          placeholder="Ask about your finances..."
+          disabled={isLoading}
+          className="flex-1 text-sm"
+        />
+        <Button 
+          onClick={handleSendMessage}
+          disabled={!inputMessage.trim() || isLoading}
+          size="icon"
+          className="h-9 w-9"
+        >
+          <Send className="h-3 w-3" />
+        </Button>
+      </div>
+    </div>
   );
 };

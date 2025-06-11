@@ -5,8 +5,8 @@ import { SalaryOverview } from './SalaryOverview';
 import { ExpenseTracker } from './ExpenseTracker';
 import { BudgetManager } from './BudgetManager';
 import { FinancialGoals } from './FinancialGoals';
-import { AIFinancialAdvisor } from './AIFinancialAdvisor';
 import { Header } from '../layout/Header';
+import { FloatingChatWidget } from '../ai/FloatingChatWidget';
 
 export const Dashboard = () => {
   return (
@@ -20,12 +20,11 @@ export const Dashboard = () => {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="expenses">Expenses</TabsTrigger>
             <TabsTrigger value="budgets">Budgets</TabsTrigger>
             <TabsTrigger value="goals">Goals</TabsTrigger>
-            <TabsTrigger value="ai-advisor">AI Advisor</TabsTrigger>
           </TabsList>
           
           <TabsContent value="overview">
@@ -43,12 +42,11 @@ export const Dashboard = () => {
           <TabsContent value="goals">
             <FinancialGoals />
           </TabsContent>
-          
-          <TabsContent value="ai-advisor">
-            <AIFinancialAdvisor />
-          </TabsContent>
         </Tabs>
       </main>
+
+      {/* Floating Chat Widget */}
+      <FloatingChatWidget />
     </div>
   );
 };
