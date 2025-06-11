@@ -2,7 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SalaryRecord, MonthlyExpectedSalary } from './types';
 import { SalaryTrendChart } from '@/components/charts/SalaryTrendChart';
-import { TrendingUp, TrendingDown, Calendar, DollarSign } from 'lucide-react';
+import { TrendingUp, TrendingDown, Calendar, IndianRupee } from 'lucide-react';
 import { format, subMonths, startOfMonth } from 'date-fns';
 
 interface SalaryInsightsCardsProps {
@@ -65,7 +65,7 @@ export const SalaryInsightsCards = ({ salaryRecords, monthlyExpectedSalaries }: 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Avg Monthly</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <IndianRupee className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">₹{Math.round(avgMonthlySalary).toLocaleString()}</div>
