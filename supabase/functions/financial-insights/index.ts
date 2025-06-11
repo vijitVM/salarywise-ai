@@ -21,7 +21,13 @@ serve(async (req) => {
     const { userId } = await req.json();
 
     if (!openAIApiKey) {
-      throw new Error('OpenAI API key not configured');
+      console.error('OpenAI API key not found in environment variables');
+      return new Response(JSON.stringify({ 
+        error: 'OpenAI API key not configured. Please check your Supabase secrets.' 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -85,6 +91,7 @@ Focus on actionable insights about spending patterns, budget performance, saving
 
 Respond with ONLY a valid JSON array of insight objects.`;
 
+    console.log('Making request to OpenAI API...');
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -102,7 +109,15 @@ Respond with ONLY a valid JSON array of insight objects.`;
       }),
     });
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('OpenAI API error:', response.status, errorText);
+      throw new Error(`OpenAI API error: ${response.status} ${errorText}`);
+    }
+
     const data = await response.json();
+    console.log('OpenAI response received successfully');
+    
     const insights = JSON.parse(data.choices[0].message.content);
 
     return new Response(JSON.stringify({ insights, summary: dataForAI }), {
