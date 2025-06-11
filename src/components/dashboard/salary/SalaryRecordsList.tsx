@@ -1,6 +1,6 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { format, parseISO, isSameMonth, isSameYear } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { SalaryRecord } from './types';
 import { AddSalaryRecordDialog } from './AddSalaryRecordDialog';
 
@@ -14,6 +14,8 @@ interface SalaryRecordsListProps {
   setPayPeriod: (period: string) => void;
   receivedDate: string;
   setReceivedDate: (date: string) => void;
+  salaryMonth: string;
+  setSalaryMonth: (month: string) => void;
   description: string;
   setDescription: (description: string) => void;
   isBonus: boolean;
@@ -31,6 +33,8 @@ export const SalaryRecordsList = ({
   setPayPeriod,
   receivedDate,
   setReceivedDate,
+  salaryMonth,
+  setSalaryMonth,
   description,
   setDescription,
   isBonus,
@@ -43,7 +47,7 @@ export const SalaryRecordsList = ({
         <div className="flex justify-between items-center">
           <div>
             <CardTitle>Salary Records</CardTitle>
-            <CardDescription>Track your salary and bonus payments</CardDescription>
+            <CardDescription>Track your salary and bonus payments with proper month mapping</CardDescription>
           </div>
           <AddSalaryRecordDialog
             isOpen={isDialogOpen}
@@ -54,6 +58,8 @@ export const SalaryRecordsList = ({
             setPayPeriod={setPayPeriod}
             receivedDate={receivedDate}
             setReceivedDate={setReceivedDate}
+            salaryMonth={salaryMonth}
+            setSalaryMonth={setSalaryMonth}
             description={description}
             setDescription={setDescription}
             isBonus={isBonus}
@@ -71,17 +77,21 @@ export const SalaryRecordsList = ({
           <div className="space-y-4">
             {salaryRecords.map((record) => {
               const recordDate = parseISO(record.received_date);
-              const isCurrentMonth = isSameMonth(recordDate, new Date()) && isSameYear(recordDate, new Date());
+              const salaryMonthDate = parseISO(record.salary_month + '-01');
               
               return (
-                <div key={record.id} className={`flex justify-between items-center p-4 border rounded-lg ${isCurrentMonth ? 'bg-blue-50 border-blue-200' : ''}`}>
+                <div key={record.id} className="flex justify-between items-center p-4 border rounded-lg">
                   <div>
                     <div className="font-medium">₹{record.amount.toLocaleString()}</div>
                     <div className="text-sm text-gray-500">
-                      {record.pay_period} • {format(recordDate, 'MMM dd, yyyy')}
+                      {record.pay_period} • Received: {format(recordDate, 'MMM dd, yyyy')}
                       {record.is_bonus && ' • Bonus'}
-                      {isCurrentMonth && ' • This Month'}
                     </div>
+                    {!record.is_bonus && (
+                      <div className="text-sm text-blue-600">
+                        Salary for: {format(salaryMonthDate, 'MMM yyyy')}
+                      </div>
+                    )}
                     {record.description && (
                       <div className="text-sm text-gray-600">{record.description}</div>
                     )}

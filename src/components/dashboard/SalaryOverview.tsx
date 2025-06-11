@@ -4,6 +4,7 @@ import { useSalaryData } from './salary/useSalaryData';
 import { useSalaryCalculations } from './salary/useSalaryCalculations';
 import { SalaryStatsCards } from './salary/SalaryStatsCards';
 import { SalaryRecordsList } from './salary/SalaryRecordsList';
+import { format } from 'date-fns';
 
 export const SalaryOverview = () => {
   const { salaryRecords, profile, loading, addSalaryRecord, updateExpectedSalary } = useSalaryData();
@@ -17,6 +18,7 @@ export const SalaryOverview = () => {
   const [amount, setAmount] = useState('');
   const [payPeriod, setPayPeriod] = useState('monthly');
   const [receivedDate, setReceivedDate] = useState('');
+  const [salaryMonth, setSalaryMonth] = useState(format(new Date(), 'yyyy-MM')); // Default to current month
   const [description, setDescription] = useState('');
   const [isBonus, setIsBonus] = useState(false);
   const [expectedMonthlySalary, setExpectedMonthlySalary] = useState(
@@ -30,6 +32,7 @@ export const SalaryOverview = () => {
       amount: parseFloat(amount),
       pay_period: payPeriod,
       received_date: receivedDate,
+      salary_month: salaryMonth,
       description: description || null,
       is_bonus: isBonus,
     });
@@ -38,6 +41,7 @@ export const SalaryOverview = () => {
     setAmount('');
     setPayPeriod('monthly');
     setReceivedDate('');
+    setSalaryMonth(format(new Date(), 'yyyy-MM'));
     setDescription('');
     setIsBonus(false);
     setIsDialogOpen(false);
@@ -77,6 +81,8 @@ export const SalaryOverview = () => {
         setPayPeriod={setPayPeriod}
         receivedDate={receivedDate}
         setReceivedDate={setReceivedDate}
+        salaryMonth={salaryMonth}
+        setSalaryMonth={setSalaryMonth}
         description={description}
         setDescription={setDescription}
         isBonus={isBonus}

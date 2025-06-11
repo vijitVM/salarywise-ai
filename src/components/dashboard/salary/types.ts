@@ -5,6 +5,7 @@ export interface SalaryRecord {
   currency: string;
   pay_period: string;
   received_date: string;
+  salary_month: string; // New field for which month this salary is for
   description: string | null;
   is_bonus: boolean;
 }
@@ -19,4 +20,6 @@ export interface MonthlyStats {
   expectedSalary: number;
   remainingBalance: number;
   currentMonthRecords: SalaryRecord[];
+  salaryForCurrentMonth: SalaryRecord | null; // Salary record for current month (regardless of when received)
+  pendingSalaryMonths: string[]; // Months for which salary hasn't been received yet
 }

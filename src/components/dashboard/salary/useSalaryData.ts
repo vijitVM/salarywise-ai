@@ -58,6 +58,7 @@ export const useSalaryData = () => {
     amount: number;
     pay_period: string;
     received_date: string;
+    salary_month: string;
     description: string | null;
     is_bonus: boolean;
   }) => {
