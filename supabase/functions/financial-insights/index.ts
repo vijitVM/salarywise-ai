@@ -64,69 +64,119 @@ serve(async (req) => {
       return isNaN(parsed) || parsed < 0 ? 0 : parsed;
     };
 
-    // Calculate income with deduplication logic
-    const salaryIncome = financialData.salaries
-      .filter(s => s.amount && validateAmount(s.amount) > 0)
-      .reduce((sum, s) => sum + validateAmount(s.amount), 0);
-
-    // Only count transaction income if no salary records exist, or if they're clearly different
+    // INCOME DEDUPLICATION LOGIC
+    // Step 1: Get all transaction income
     const transactionIncome = financialData.transactions
       .filter(t => t.type === 'income' && validateAmount(t.amount) > 0)
       .reduce((sum, t) => sum + validateAmount(t.amount), 0);
 
-    // Use salary records as primary source, transactions as secondary
-    const totalIncome = salaryIncome > 0 ? salaryIncome : transactionIncome;
+    // Step 2: Get salary records and check for overlap with transactions
+    let salaryIncome = 0;
+    const salaryRecords = financialData.salaries.filter(s => validateAmount(s.amount) > 0);
     
-    console.log('Income calculation:', {
+    if (salaryRecords.length > 0) {
+      // Use salary records as primary source
+      salaryIncome = salaryRecords.reduce((sum, s) => sum + validateAmount(s.amount), 0);
+      
+      // If we have both salary records and income transactions, prefer salary records
+      // but add any income transactions that don't seem to match salary amounts
+      if (transactionIncome > 0) {
+        // Only use transaction income if it's significantly different from salary income
+        // This assumes that salary records are more accurate than transaction income entries
+        const incomeDifference = Math.abs(transactionIncome - salaryIncome);
+        const incomeThreshold = Math.max(salaryIncome * 0.1, 1000); // 10% or ₹1000 threshold
+        
+        if (incomeDifference > incomeThreshold) {
+          console.log('Income discrepancy detected:', {
+            salaryIncome,
+            transactionIncome,
+            difference: incomeDifference,
+            threshold: incomeThreshold
+          });
+          // In case of significant discrepancy, use the higher amount
+          salaryIncome = Math.max(salaryIncome, transactionIncome);
+        }
+      }
+    }
+
+    const totalIncome = salaryIncome > 0 ? salaryIncome : transactionIncome;
+
+    console.log('Deduplicated Income calculation:', {
+      salaryRecordsCount: salaryRecords.length,
       salaryIncome,
       transactionIncome,
-      totalIncomeUsed: totalIncome,
-      source: salaryIncome > 0 ? 'salary_records' : 'transactions'
+      finalTotalIncome: totalIncome,
+      source: salaryIncome > 0 ? 'salary_records (primary)' : 'transactions (fallback)'
     });
 
-    // Calculate expenses - combine both sources as they represent different types
-    const legacyExpenses = financialData.expenses
-      .filter(e => validateAmount(e.amount) > 0)
-      .reduce((sum, e) => sum + validateAmount(e.amount), 0);
-    
+    // EXPENSE DEDUPLICATION LOGIC
+    // Step 1: Get transaction expenses with metadata
     const transactionExpenses = financialData.transactions
       .filter(t => t.type === 'expense' && validateAmount(t.amount) > 0)
-      .reduce((sum, t) => sum + validateAmount(t.amount), 0);
+      .map(t => ({
+        amount: validateAmount(t.amount),
+        category: t.category?.trim() || 'Other',
+        date: t.transaction_date,
+        description: t.description?.trim() || '',
+        id: t.id
+      }));
+
+    // Step 2: Get legacy expenses with metadata
+    const legacyExpenses = financialData.expenses
+      .filter(e => validateAmount(e.amount) > 0)
+      .map(e => ({
+        amount: validateAmount(e.amount),
+        category: e.category?.trim() || 'Other',
+        date: e.expense_date,
+        description: e.description?.trim() || '',
+        id: e.id
+      }));
+
+    // Step 3: Deduplicate expenses by finding potential matches
+    const deduplicatedExpenses = [...transactionExpenses];
     
-    const totalExpenses = legacyExpenses + transactionExpenses;
+    for (const legacyExpense of legacyExpenses) {
+      // Check if this legacy expense might be a duplicate of a transaction expense
+      const potentialDuplicate = transactionExpenses.find(txnExpense => 
+        Math.abs(txnExpense.amount - legacyExpense.amount) < 1 && // Same amount (within ₹1)
+        txnExpense.category === legacyExpense.category && // Same category
+        Math.abs(new Date(txnExpense.date).getTime() - new Date(legacyExpense.date).getTime()) < 7 * 24 * 60 * 60 * 1000 // Within 7 days
+      );
+
+      if (!potentialDuplicate) {
+        // Not a duplicate, add to deduplicated list
+        deduplicatedExpenses.push({
+          ...legacyExpense,
+          source: 'legacy'
+        });
+      } else {
+        console.log('Potential duplicate expense found:', {
+          legacy: legacyExpense,
+          transaction: potentialDuplicate
+        });
+      }
+    }
+
+    const totalExpenses = deduplicatedExpenses.reduce((sum, e) => sum + e.amount, 0);
     const netSavings = totalIncome - totalExpenses;
     const savingsRate = totalIncome > 0 ? (netSavings / totalIncome * 100) : 0;
 
-    console.log('Expense calculation:', {
-      legacyExpenses,
-      transactionExpenses,
+    console.log('Deduplicated Expense calculation:', {
+      transactionExpensesCount: transactionExpenses.length,
+      legacyExpensesCount: legacyExpenses.length,
+      deduplicatedExpensesCount: deduplicatedExpenses.length,
+      duplicatesRemoved: transactionExpenses.length + legacyExpenses.length - deduplicatedExpenses.length,
       totalExpenses,
       netSavings,
       savingsRate: savingsRate.toFixed(1) + '%'
     });
 
-    // Enhanced category breakdown - combine both sources properly
+    // Enhanced category breakdown from deduplicated expenses
     const categoryExpenses = {};
-    
-    // Add legacy expenses with validation
-    financialData.expenses.forEach(expense => {
-      const amount = validateAmount(expense.amount);
-      if (expense.category && amount > 0) {
-        const category = expense.category.trim();
-        categoryExpenses[category] = (categoryExpenses[category] || 0) + amount;
-      }
+    deduplicatedExpenses.forEach(expense => {
+      const category = expense.category;
+      categoryExpenses[category] = (categoryExpenses[category] || 0) + expense.amount;
     });
-
-    // Add transaction expenses with validation
-    financialData.transactions
-      .filter(t => t.type === 'expense')
-      .forEach(transaction => {
-        const amount = validateAmount(transaction.amount);
-        if (transaction.category && amount > 0) {
-          const category = transaction.category.trim();
-          categoryExpenses[category] = (categoryExpenses[category] || 0) + amount;
-        }
-      });
 
     // Enhanced budget analysis with better validation
     const budgetAnalysis = financialData.budgets
@@ -176,13 +226,18 @@ serve(async (req) => {
         hasBudgets: financialData.budgets.length > 0,
         hasGoals: financialData.goals.length > 0,
         incomeSource: salaryIncome > 0 ? 'salary_records' : 'transactions',
-        totalRecords: financialData.salaries.length + financialData.expenses.length + financialData.transactions.length
+        totalRecords: deduplicatedExpenses.length + salaryRecords.length,
+        deduplicationStats: {
+          originalExpenseRecords: transactionExpenses.length + legacyExpenses.length,
+          deduplicatedExpenseRecords: deduplicatedExpenses.length,
+          duplicatesRemoved: transactionExpenses.length + legacyExpenses.length - deduplicatedExpenses.length
+        }
       }
     };
 
-    console.log('Final data for AI:', dataForAI);
+    console.log('Final deduplicated data for AI:', dataForAI);
 
-    // Enhanced system prompt with stricter requirements
+    // Enhanced system prompt with stricter requirements and deduplication info
     const systemPrompt = `You are a financial insights AI for an Indian user. Analyze the provided financial data and generate EXACTLY 4 insights as a JSON array.
 
 CRITICAL FORMATTING REQUIREMENTS:
@@ -190,6 +245,8 @@ CRITICAL FORMATTING REQUIREMENTS:
 2. Format large amounts with Indian comma system: ₹1,35,284 (not ₹135,284)
 3. Use EXACT numbers from the provided data - do not estimate or round differently
 4. Each insight must have: type, title, description, metric
+
+DEDUPLICATION NOTE: The data provided has been deduplicated between legacy tables and transactions to ensure accuracy.
 
 EXACT DATA TO USE:
 - Total Income: ₹${dataForAI.totalIncome.toLocaleString('en-IN')}
@@ -228,7 +285,7 @@ Respond with ONLY valid JSON array - no markdown, no explanations.`;
         model: 'gpt-4o',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Generate 4 financial insights for this data: ${JSON.stringify(dataForAI)}` }
+          { role: 'user', content: `Generate 4 financial insights for this deduplicated data: ${JSON.stringify(dataForAI)}` }
         ],
         temperature: 0.1, // Very low temperature for consistency
         max_tokens: 1000,
@@ -274,17 +331,22 @@ Respond with ONLY valid JSON array - no markdown, no explanations.`;
         insights, 
         summary: dataForAI,
         debug: {
-          calculationMethod: {
-            income: dataForAI.dataQuality.incomeSource,
-            expenseCombination: 'legacy + transactions',
-            deduplication: 'salary prioritized over transaction income'
+          deduplicationMethod: 'smart_comparison',
+          calculationLogic: {
+            income: 'salary_records prioritized, transactions as fallback with discrepancy detection',
+            expenses: 'deduplicated by amount, category, and date proximity (7-day window)',
+            duplicatesRemoved: dataForAI.dataQuality.deduplicationStats.duplicatesRemoved
           },
           validation: {
-            totalIncome,
-            totalExpenses,
-            netSavings,
-            savingsRate: savingsRate.toFixed(1) + '%',
-            categoryCount: Object.keys(categoryExpenses).length
+            totalIncome: dataForAI.totalIncome,
+            totalExpenses: dataForAI.totalExpenses,
+            netSavings: dataForAI.netSavings,
+            savingsRate: dataForAI.savingsRate + '%',
+            categoryCount: Object.keys(categoryExpenses).length,
+            recordCounts: {
+              originalExpenses: dataForAI.dataQuality.deduplicationStats.originalExpenseRecords,
+              deduplicatedExpenses: dataForAI.dataQuality.deduplicationStats.deduplicatedExpenseRecords
+            }
           }
         }
       }), {
