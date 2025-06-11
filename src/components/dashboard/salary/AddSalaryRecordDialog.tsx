@@ -15,6 +15,8 @@ interface AddSalaryRecordDialogProps {
   setPayPeriod: (period: string) => void;
   receivedDate: string;
   setReceivedDate: (date: string) => void;
+  salaryMonth: string;
+  setSalaryMonth: (month: string) => void;
   description: string;
   setDescription: (description: string) => void;
   isBonus: boolean;
@@ -31,6 +33,8 @@ export const AddSalaryRecordDialog = ({
   setPayPeriod,
   receivedDate,
   setReceivedDate,
+  salaryMonth,
+  setSalaryMonth,
   description,
   setDescription,
   isBonus,
@@ -88,6 +92,19 @@ export const AddSalaryRecordDialog = ({
               required
             />
           </div>
+          {!isBonus && (
+            <div className="space-y-2">
+              <Label htmlFor="salaryMonth">Salary Month</Label>
+              <Input
+                id="salaryMonth"
+                type="month"
+                value={salaryMonth}
+                onChange={(e) => setSalaryMonth(e.target.value)}
+                placeholder="2024-05"
+                required
+              />
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="description">Description (Optional)</Label>
             <Input

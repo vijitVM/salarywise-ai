@@ -148,6 +148,7 @@ export type Database = {
           is_bonus: boolean | null
           pay_period: string
           received_date: string
+          salary_month: string
           updated_at: string
           user_id: string
         }
@@ -160,6 +161,7 @@ export type Database = {
           is_bonus?: boolean | null
           pay_period: string
           received_date: string
+          salary_month: string
           updated_at?: string
           user_id: string
         }
@@ -172,6 +174,7 @@ export type Database = {
           is_bonus?: boolean | null
           pay_period?: string
           received_date?: string
+          salary_month?: string
           updated_at?: string
           user_id?: string
         }

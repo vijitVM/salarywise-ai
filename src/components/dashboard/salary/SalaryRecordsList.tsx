@@ -77,7 +77,6 @@ export const SalaryRecordsList = ({
           <div className="space-y-4">
             {salaryRecords.map((record) => {
               const recordDate = parseISO(record.received_date);
-              const salaryMonthDate = parseISO(record.salary_month + '-01');
               
               return (
                 <div key={record.id} className="flex justify-between items-center p-4 border rounded-lg">
@@ -87,9 +86,9 @@ export const SalaryRecordsList = ({
                       {record.pay_period} • Received: {format(recordDate, 'MMM dd, yyyy')}
                       {record.is_bonus && ' • Bonus'}
                     </div>
-                    {!record.is_bonus && (
+                    {!record.is_bonus && record.salary_month && (
                       <div className="text-sm text-blue-600">
-                        Salary for: {format(salaryMonthDate, 'MMM yyyy')}
+                        Salary for: {format(parseISO(record.salary_month + '-01'), 'MMM yyyy')}
                       </div>
                     )}
                     {record.description && (
