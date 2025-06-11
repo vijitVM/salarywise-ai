@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -70,19 +71,30 @@ export const SalaryStatsCards = ({
       })
       .reduce((sum, record) => sum + record.amount, 0);
 
-    const shortfall = expectedAmount - (salaryForViewMonth?.amount || 0);
-    const isComplete = salaryForViewMonth && salaryForViewMonth.amount >= expectedAmount && expectedAmount > 0;
-    const isMissing = !salaryForViewMonth && expectedAmount > 0;
-    const isIncomplete = salaryForViewMonth && salaryForViewMonth.amount < expectedAmount && expectedAmount > 0;
+    // Get count of payments received in that month
+    const paymentsCount = salaryRecords
+      .filter(record => {
+        const recordDate = parseISO(record.received_date);
+        return isWithinInterval(recordDate, { start: viewMonthStart, end: viewMonthEnd });
+      }).length;
+
+    // Status logic based on total received vs expected
+    const shortfall = expectedAmount - totalReceivedInMonth;
+    const isComplete = totalReceivedInMonth >= expectedAmount && expectedAmount > 0;
+    const isMissing = totalReceivedInMonth === 0 && expectedAmount > 0;
+    const isIncomplete = totalReceivedInMonth > 0 && totalReceivedInMonth < expectedAmount && expectedAmount > 0;
+    const isExcess = totalReceivedInMonth > expectedAmount && expectedAmount > 0;
 
     return {
       expectedAmount,
       receivedAmount: salaryForViewMonth?.amount || 0,
-      totalReceivedInMonth, // This is the new field for total received during the month
+      totalReceivedInMonth,
+      paymentsCount,
       shortfall,
       isComplete,
       isMissing,
       isIncomplete,
+      isExcess,
       salaryRecord: salaryForViewMonth
     };
   }, [viewMonth, monthlyExpectedSalaries, salaryRecords]);
@@ -98,13 +110,22 @@ export const SalaryStatsCards = ({
   const displayStats = isCurrentMonth ? monthlyStats : {
     expectedSalary: viewMonthStats.expectedAmount,
     salaryForCurrentMonth: viewMonthStats.salaryRecord,
-    currentMonthTotal: viewMonthStats.totalReceivedInMonth, // Use total received in month
+    currentMonthTotal: viewMonthStats.totalReceivedInMonth,
     remainingBalance: viewMonthStats.shortfall
   };
 
-  const isIncompletePayment = displayStats.salaryForCurrentMonth && displayStats.salaryForCurrentMonth.amount < displayStats.expectedSalary;
-  const isSalaryMissing = !displayStats.salaryForCurrentMonth && displayStats.expectedSalary > 0;
-  const shortfallAmount = displayStats.expectedSalary - (displayStats.salaryForCurrentMonth?.amount || 0);
+  // For non-current months, use the view month stats for status calculations
+  const isIncompletePayment = isCurrentMonth 
+    ? (displayStats.salaryForCurrentMonth && displayStats.salaryForCurrentMonth.amount < displayStats.expectedSalary)
+    : viewMonthStats.isIncomplete;
+  
+  const isSalaryMissing = isCurrentMonth 
+    ? (!displayStats.salaryForCurrentMonth && displayStats.expectedSalary > 0)
+    : viewMonthStats.isMissing;
+
+  const shortfallAmount = isCurrentMonth 
+    ? (displayStats.expectedSalary - (displayStats.salaryForCurrentMonth?.amount || 0))
+    : Math.abs(viewMonthStats.shortfall);
 
   return (
     <div className="space-y-6">
@@ -191,34 +212,64 @@ export const SalaryStatsCards = ({
           </CardContent>
         </Card>
 
-        {/* Month Salary Card */}
+        {/* Month Salary Card - Now shows total received during the month */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              {isCurrentMonth ? 'Current Month Salary' : 'Month Salary'}
+              {isCurrentMonth ? 'This Month Received' : 'Month Received'}
             </CardTitle>
-            {displayStats.salaryForCurrentMonth && !isIncompletePayment ? (
-              <CheckCircle className="h-4 w-4 text-green-500" />
-            ) : isIncompletePayment ? (
-              <AlertTriangle className="h-4 w-4 text-orange-500" />
+            {!isCurrentMonth ? (
+              viewMonthStats.isComplete ? (
+                <CheckCircle className="h-4 w-4 text-green-500" />
+              ) : viewMonthStats.isExcess ? (
+                <TrendingUp className="h-4 w-4 text-blue-500" />
+              ) : viewMonthStats.isIncomplete ? (
+                <AlertTriangle className="h-4 w-4 text-orange-500" />
+              ) : (
+                <Clock className="h-4 w-4 text-amber-500" />
+              )
             ) : (
-              <Clock className="h-4 w-4 text-amber-500" />
+              displayStats.currentMonthTotal >= displayStats.expectedSalary && displayStats.expectedSalary > 0 ? (
+                <CheckCircle className="h-4 w-4 text-green-500" />
+              ) : displayStats.currentMonthTotal > 0 && displayStats.currentMonthTotal < displayStats.expectedSalary ? (
+                <AlertTriangle className="h-4 w-4 text-orange-500" />
+              ) : (
+                <Clock className="h-4 w-4 text-amber-500" />
+              )
             )}
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ₹{displayStats.salaryForCurrentMonth?.amount.toLocaleString() || '0'}
+              ₹{displayStats.currentMonthTotal.toLocaleString()}
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">
-                {displayStats.salaryForCurrentMonth ? 'Received' : 'Pending'} for {format(parseISO(viewMonth + '-01'), 'MMM yyyy')}
+                {isCurrentMonth 
+                  ? `${currentMonthRecords.length} payment(s) this month`
+                  : `${viewMonthStats.paymentsCount} payment(s) in ${format(parseISO(viewMonth + '-01'), 'MMM yyyy')}`
+                }
               </p>
-              {isIncompletePayment && (
+              {!isCurrentMonth && viewMonthStats.isIncomplete && (
                 <p className="text-xs text-orange-600 font-medium">
                   Short by ₹{shortfallAmount.toLocaleString()}
                 </p>
               )}
-              {isSalaryMissing && displayStats.expectedSalary > 0 && (
+              {!isCurrentMonth && viewMonthStats.isMissing && viewMonthStats.expectedAmount > 0 && (
+                <p className="text-xs text-red-600 font-medium">
+                  Missing ₹{viewMonthStats.expectedAmount.toLocaleString()}
+                </p>
+              )}
+              {!isCurrentMonth && viewMonthStats.isExcess && (
+                <p className="text-xs text-blue-600 font-medium">
+                  Excess by ₹{Math.abs(viewMonthStats.shortfall).toLocaleString()}
+                </p>
+              )}
+              {isCurrentMonth && isIncompletePayment && (
+                <p className="text-xs text-orange-600 font-medium">
+                  Short by ₹{shortfallAmount.toLocaleString()}
+                </p>
+              )}
+              {isCurrentMonth && isSalaryMissing && displayStats.expectedSalary > 0 && (
                 <p className="text-xs text-red-600 font-medium">
                   Missing ₹{displayStats.expectedSalary.toLocaleString()}
                 </p>
@@ -231,14 +282,14 @@ export const SalaryStatsCards = ({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              {isCurrentMonth ? 'This Month Received' : 'Month Received'}
+              {isCurrentMonth ? 'Month vs Expected' : 'Month vs Expected'}
             </CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">₹{displayStats.currentMonthTotal.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              {isCurrentMonth ? `${currentMonthRecords.length} payment(s) this month` : 'Total received in month'}
+              vs ₹{displayStats.expectedSalary.toLocaleString()} expected
             </p>
             {displayStats.expectedSalary > 0 && displayStats.currentMonthTotal !== displayStats.expectedSalary && (
               <p className="text-xs text-blue-600 mt-1">
@@ -263,6 +314,8 @@ export const SalaryStatsCards = ({
             ) : (
               viewMonthStats.isComplete ? (
                 <CheckCircle className="h-4 w-4 text-green-500" />
+              ) : viewMonthStats.isExcess ? (
+                <TrendingUp className="h-4 w-4 text-blue-500" />
               ) : viewMonthStats.isIncomplete ? (
                 <AlertTriangle className="h-4 w-4 text-orange-500" />
               ) : (
@@ -280,7 +333,7 @@ export const SalaryStatsCards = ({
                       Pending: {pendingSalaryMonths.map(month => format(parseISO(month + '-01'), 'MMM')).join(', ')}
                     </p>
                   </>
-                ) : isIncompletePayment ? (
+                ) : displayStats.currentMonthTotal < displayStats.expectedSalary && displayStats.expectedSalary > 0 ? (
                   <>
                     <div className="text-2xl font-bold text-orange-600">Partial</div>
                     <p className="text-xs text-muted-foreground">
@@ -300,7 +353,14 @@ export const SalaryStatsCards = ({
                   <>
                     <div className="text-2xl font-bold text-green-600">Complete</div>
                     <p className="text-xs text-muted-foreground">
-                      Full salary received
+                      Full amount received
+                    </p>
+                  </>
+                ) : viewMonthStats.isExcess ? (
+                  <>
+                    <div className="text-2xl font-bold text-blue-600">Excess</div>
+                    <p className="text-xs text-muted-foreground">
+                      Extra ₹{Math.abs(viewMonthStats.shortfall).toLocaleString()}
                     </p>
                   </>
                 ) : viewMonthStats.isIncomplete ? (
@@ -314,7 +374,7 @@ export const SalaryStatsCards = ({
                   <>
                     <div className="text-2xl font-bold text-red-600">Missing</div>
                     <p className="text-xs text-muted-foreground">
-                      No salary received
+                      No payments received
                     </p>
                   </>
                 )
