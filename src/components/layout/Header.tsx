@@ -1,13 +1,16 @@
+
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { LogOut, User, TrendingUp } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { DataExportDialog } from '@/components/export/DataExportDialog';
 import { useSalaryData } from '@/components/dashboard/salary/useSalaryData';
+import { useTransactionData } from '@/hooks/useTransactionData';
 
 export const Header = () => {
   const { user, signOut } = useAuth();
   const { salaryRecords, monthlyExpectedSalaries } = useSalaryData();
+  const { transactions } = useTransactionData();
 
   const handleSignOut = async () => {
     await signOut();
@@ -16,6 +19,7 @@ export const Header = () => {
   const exportData = {
     salaryRecords,
     monthlyExpectedSalaries,
+    transactions,
   };
 
   return (
