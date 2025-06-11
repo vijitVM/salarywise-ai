@@ -16,6 +16,45 @@ interface Message {
   timestamp: Date;
 }
 
+const formatAIResponse = (content: string) => {
+  // Split content by numbered lists and sections
+  const sections = content.split(/(\d+\.\s*\*\*[^*]+\*\*)/g);
+  
+  return (
+    <div className="space-y-3">
+      {sections.map((section, index) => {
+        if (!section.trim()) return null;
+        
+        // Check if this is a numbered section with bold title
+        const numberedMatch = section.match(/(\d+)\.\s*\*\*([^*]+)\*\*:?\s*(.*)/s);
+        if (numberedMatch) {
+          const [, number, title, description] = numberedMatch;
+          return (
+            <div key={index} className="border-l-2 border-primary/20 pl-3 py-2">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="bg-primary/10 text-primary text-xs font-medium px-2 py-1 rounded-full">
+                  {number}
+                </span>
+                <h4 className="font-semibold text-sm">{title}</h4>
+              </div>
+              {description && (
+                <p className="text-sm text-muted-foreground ml-6">{description.trim()}</p>
+              )}
+            </div>
+          );
+        }
+        
+        // Regular paragraph
+        return (
+          <p key={index} className="text-sm leading-relaxed">
+            {section.trim()}
+          </p>
+        );
+      })}
+    </div>
+  );
+};
+
 export const FinancialChatBot = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -100,19 +139,25 @@ export const FinancialChatBot = () => {
                 key={message.id}
                 className={`flex gap-3 ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                <div className={`flex gap-2 max-w-[80%] ${message.type === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                <div className={`flex gap-3 max-w-[85%] ${message.type === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                     message.type === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'
                   }`}>
                     {message.type === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                   </div>
-                  <div className={`rounded-lg p-3 ${
+                  <div className={`rounded-lg p-4 ${
                     message.type === 'user' 
                       ? 'bg-primary text-primary-foreground' 
-                      : 'bg-muted'
+                      : 'bg-muted border'
                   }`}>
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                    <p className="text-xs opacity-70 mt-1">
+                    {message.type === 'ai' ? (
+                      formatAIResponse(message.content)
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    )}
+                    <p className={`text-xs opacity-70 mt-3 pt-2 border-t ${
+                      message.type === 'user' ? 'border-primary-foreground/20' : 'border-border'
+                    }`}>
                       {message.timestamp.toLocaleTimeString()}
                     </p>
                   </div>
@@ -121,11 +166,11 @@ export const FinancialChatBot = () => {
             ))}
             {isLoading && (
               <div className="flex gap-3 justify-start">
-                <div className="flex gap-2 max-w-[80%]">
+                <div className="flex gap-3 max-w-[85%]">
                   <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-muted">
                     <Bot className="h-4 w-4" />
                   </div>
-                  <div className="rounded-lg p-3 bg-muted">
+                  <div className="rounded-lg p-4 bg-muted border">
                     <div className="flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       <span className="text-sm">Thinking...</span>
@@ -144,6 +189,7 @@ export const FinancialChatBot = () => {
             onKeyPress={handleKeyPress}
             placeholder="Ask about your finances..."
             disabled={isLoading}
+            className="flex-1"
           />
           <Button 
             onClick={handleSendMessage}
