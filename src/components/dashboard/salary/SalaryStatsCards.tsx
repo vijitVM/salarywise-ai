@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { IndianRupee, Calendar, AlertCircle, CheckCircle, TrendingUp, Clock } from 'lucide-react';
+import { IndianRupee, Calendar, AlertCircle, CheckCircle, TrendingUp, Clock, AlertTriangle } from 'lucide-react';
 import { MonthlyStats, MonthlyExpectedSalary } from './types';
 import { format, parseISO } from 'date-fns';
 import { useState } from 'react';
@@ -39,6 +39,10 @@ export const SalaryStatsCards = ({
     setExpectedMonthlySalary('');
     setIsSalaryDialogOpen(false);
   };
+
+  const isIncompletePayment = salaryForCurrentMonth && salaryForCurrentMonth.amount < expectedSalary;
+  const isSalaryMissing = !salaryForCurrentMonth && expectedSalary > 0;
+  const shortfallAmount = expectedSalary - (salaryForCurrentMonth?.amount || 0);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -96,8 +100,10 @@ export const SalaryStatsCards = ({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Current Month Salary</CardTitle>
-          {salaryForCurrentMonth ? (
+          {salaryForCurrentMonth && !isIncompletePayment ? (
             <CheckCircle className="h-4 w-4 text-green-500" />
+          ) : isIncompletePayment ? (
+            <AlertTriangle className="h-4 w-4 text-orange-500" />
           ) : (
             <Clock className="h-4 w-4 text-amber-500" />
           )}
@@ -106,9 +112,21 @@ export const SalaryStatsCards = ({
           <div className="text-2xl font-bold">
             ₹{salaryForCurrentMonth?.amount.toLocaleString() || '0'}
           </div>
-          <p className="text-xs text-muted-foreground">
-            {salaryForCurrentMonth ? 'Received' : 'Pending'} for {format(new Date(), 'MMM yyyy')}
-          </p>
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">
+              {salaryForCurrentMonth ? 'Received' : 'Pending'} for {format(new Date(), 'MMM yyyy')}
+            </p>
+            {isIncompletePayment && (
+              <p className="text-xs text-orange-600 font-medium">
+                Short by ₹{shortfallAmount.toLocaleString()}
+              </p>
+            )}
+            {isSalaryMissing && expectedSalary > 0 && (
+              <p className="text-xs text-red-600 font-medium">
+                Missing ₹{expectedSalary.toLocaleString()}
+              </p>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -122,12 +140,17 @@ export const SalaryStatsCards = ({
           <p className="text-xs text-muted-foreground">
             {currentMonthRecords.length} payment(s) this month
           </p>
+          {expectedSalary > 0 && currentMonthTotal !== expectedSalary && (
+            <p className="text-xs text-blue-600 mt-1">
+              {currentMonthTotal > expectedSalary ? 'Excess' : 'Gap'}: ₹{Math.abs(expectedSalary - currentMonthTotal).toLocaleString()}
+            </p>
+          )}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Pending Months</CardTitle>
+          <CardTitle className="text-sm font-medium">Salary Status</CardTitle>
           {pendingSalaryMonths.length > 0 ? (
             <AlertCircle className="h-4 w-4 text-amber-500" />
           ) : (
@@ -135,13 +158,30 @@ export const SalaryStatsCards = ({
           )}
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{pendingSalaryMonths.length}</div>
-          <p className="text-xs text-muted-foreground">
-            {pendingSalaryMonths.length > 0 
-              ? `${pendingSalaryMonths.map(month => format(parseISO(month + '-01'), 'MMM')).join(', ')} pending`
-              : 'All up to date'
-            }
-          </p>
+          <div className="space-y-2">
+            {pendingSalaryMonths.length > 0 ? (
+              <>
+                <div className="text-2xl font-bold text-amber-600">{pendingSalaryMonths.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  Pending: {pendingSalaryMonths.map(month => format(parseISO(month + '-01'), 'MMM')).join(', ')}
+                </p>
+              </>
+            ) : isIncompletePayment ? (
+              <>
+                <div className="text-2xl font-bold text-orange-600">Partial</div>
+                <p className="text-xs text-muted-foreground">
+                  Current month incomplete
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-green-600">Complete</div>
+                <p className="text-xs text-muted-foreground">
+                  All salaries up to date
+                </p>
+              </>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>
