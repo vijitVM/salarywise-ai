@@ -1,4 +1,5 @@
 
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
@@ -57,7 +58,7 @@ serve(async (req) => {
       transactions: transactionsRes.data || []
     };
 
-    // Calculate accurate totals with proper data validation
+    // Calculate totals more accurately
     const totalSalaryIncome = financialData.salaries
       .filter(s => s.amount && !isNaN(Number(s.amount)))
       .reduce((sum, s) => sum + Number(s.amount), 0);
@@ -107,24 +108,10 @@ serve(async (req) => {
         }
       });
 
-    // Budget analysis with validation
-    const budgetAnalysis = financialData.budgets
-      .filter(budget => budget.monthly_limit && !isNaN(Number(budget.monthly_limit)))
-      .map(budget => ({
-        category: budget.category,
-        spent: Number(budget.current_spent || 0),
-        limit: Number(budget.monthly_limit),
-        percentage: budget.monthly_limit > 0 ? (Number(budget.current_spent || 0) / Number(budget.monthly_limit)) * 100 : 0
-      }));
-
-    // Recent salary analysis (last 6 months)
-    const recentSalaries = financialData.salaries
-      .filter(s => s.amount && !isNaN(Number(s.amount)) && !s.is_bonus)
-      .slice(0, 6);
-
-    const avgMonthlySalary = recentSalaries.length > 0 
-      ? recentSalaries.reduce((sum, s) => sum + Number(s.amount), 0) / recentSalaries.length 
-      : 0;
+    // Get current month's data for more accurate insights
+    const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
+    const lastThreeMonths = new Date();
+    lastThreeMonths.setMonth(lastThreeMonths.getMonth() - 3);
 
     // Recent transactions (last 30 days)
     const thirtyDaysAgo = new Date();
@@ -135,22 +122,42 @@ serve(async (req) => {
       return transactionDate >= thirtyDaysAgo && t.amount && !isNaN(Number(t.amount));
     });
 
-    // Monthly savings calculation
-    const monthlySavings = totalIncome > 0 ? netSavings : 0;
+    const recentExpenses = financialData.expenses.filter(e => {
+      const expenseDate = new Date(e.expense_date);
+      return expenseDate >= thirtyDaysAgo && e.amount && !isNaN(Number(e.amount));
+    });
+
+    // Calculate monthly averages for better insights
+    const recentSalaries = financialData.salaries
+      .filter(s => s.amount && !isNaN(Number(s.amount)) && !s.is_bonus)
+      .slice(0, 6);
+
+    const avgMonthlySalary = recentSalaries.length > 0 
+      ? recentSalaries.reduce((sum, s) => sum + Number(s.amount), 0) / recentSalaries.length 
+      : 0;
+
+    // Budget analysis with validation
+    const budgetAnalysis = financialData.budgets
+      .filter(budget => budget.monthly_limit && !isNaN(Number(budget.monthly_limit)))
+      .map(budget => ({
+        category: budget.category,
+        spent: Number(budget.current_spent || 0),
+        limit: Number(budget.monthly_limit),
+        percentage: budget.monthly_limit > 0 ? (Number(budget.current_spent || 0) / Number(budget.monthly_limit)) * 100 : 0
+      }));
 
     const dataForAI = {
       totalIncome: Math.round(totalIncome),
       totalExpenses: Math.round(totalExpenses),
       netSavings: Math.round(netSavings),
-      monthlySavings: Math.round(monthlySavings),
-      savingsRate: Math.round(savingsRate * 10) / 10, // Round to 1 decimal
+      savingsRate: Math.round(savingsRate * 10) / 10,
       categoryBreakdown: Object.entries(categoryExpenses)
         .sort(([,a], [,b]) => b - a)
-        .slice(0, 5)
+        .slice(0, 8)
         .map(([category, amount]) => [category, Math.round(amount)]),
       budgetStatus: budgetAnalysis,
-      recentExpenses: [
-        ...financialData.expenses.slice(0, 5).map(e => ({
+      recentMonthlyExpenses: [
+        ...recentExpenses.slice(0, 5).map(e => ({
           category: e.category,
           amount: Math.round(Number(e.amount || 0)),
           date: e.expense_date
@@ -160,7 +167,7 @@ serve(async (req) => {
           amount: Math.round(Number(t.amount || 0)),
           date: t.transaction_date
         }))
-      ].slice(0, 10), // Limit to 10 recent expenses
+      ].slice(0, 10),
       goalProgress: financialData.goals
         .filter(g => g.target_amount && !isNaN(Number(g.target_amount)))
         .map(g => ({
@@ -176,7 +183,11 @@ serve(async (req) => {
         hasExpenses: financialData.expenses.length > 0,
         hasSalaries: financialData.salaries.length > 0,
         hasBudgets: financialData.budgets.length > 0,
-        hasGoals: financialData.goals.length > 0
+        hasGoals: financialData.goals.length > 0,
+        dataCompleteness: {
+          totalRecords: financialData.salaries.length + financialData.expenses.length + financialData.transactions.length,
+          hasRecentData: recentTransactions.length > 0 || recentExpenses.length > 0
+        }
       }
     };
 
@@ -190,14 +201,21 @@ serve(async (req) => {
 
 CRITICAL REQUIREMENTS:
 1. ALL currency amounts MUST use Indian Rupee symbol (₹) and proper formatting with commas for large numbers (e.g., ₹1,35,284)
-2. Only provide insights based on actual data - if no data exists for a category, don't make assumptions
-3. Be accurate with calculations and numbers - use the provided totals and breakdowns
-4. Focus on actionable insights about spending patterns, budget performance, savings rate, and goal progress
-5. If data seems incomplete or inconsistent, mention it appropriately
-6. Savings calculations: Total savings = Total income (₹${dataForAI.totalIncome}) - Total expenses (₹${dataForAI.totalExpenses}) = ₹${dataForAI.netSavings}
-7. Monthly savings rate = (Net savings / Total income) × 100 = ${dataForAI.savingsRate}%
+2. ACCURACY IS PARAMOUNT - Only provide insights based on ACTUAL calculated data from the provided financial summary
+3. Use the EXACT numbers provided in the data - do not estimate or approximate
+4. Focus on actionable insights about spending patterns, savings rate, and category-specific observations
+5. If the user has no data in a category (like budgets or goals), don't mention those categories
+6. Base spending observations on the categoryBreakdown provided
+7. Savings rate calculation: (₹${dataForAI.netSavings} / ₹${dataForAI.totalIncome}) × 100 = ${dataForAI.savingsRate}%
 
-Data quality context: ${JSON.stringify(dataForAI.dataQuality)}
+Key Financial Data:
+- Total Income: ₹${dataForAI.totalIncome}
+- Total Expenses: ₹${dataForAI.totalExpenses}  
+- Net Savings: ₹${dataForAI.netSavings}
+- Savings Rate: ${dataForAI.savingsRate}%
+- Top Expense Categories: ${dataForAI.categoryBreakdown.map(([cat, amt]) => `${cat}: ₹${amt}`).join(', ')}
+
+Data context: ${JSON.stringify(dataForAI.dataQuality)}
 
 Respond with ONLY a valid JSON array of insight objects, no markdown formatting.`;
 
@@ -212,9 +230,9 @@ Respond with ONLY a valid JSON array of insight objects, no markdown formatting.
         model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Financial Data: ${JSON.stringify(dataForAI)}` }
+          { role: 'user', content: `Analyze this financial data: ${JSON.stringify(dataForAI)}` }
         ],
-        temperature: 0.2, // Lower temperature for more consistent results
+        temperature: 0.1,
         max_tokens: 800,
       }),
     });
@@ -252,7 +270,8 @@ Respond with ONLY a valid JSON array of insight objects, no markdown formatting.
           totalIncome,
           totalExpenses,
           netSavings,
-          savingsRate: savingsRate.toFixed(1) + '%'
+          savingsRate: savingsRate.toFixed(1) + '%',
+          topCategories: Object.entries(categoryExpenses).sort(([,a], [,b]) => b - a).slice(0, 5)
         }
       }
     }), {
@@ -269,3 +288,4 @@ Respond with ONLY a valid JSON array of insight objects, no markdown formatting.
     });
   }
 });
+
