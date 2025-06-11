@@ -6,11 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, TrendingUp, IndianRupee, Calendar } from 'lucide-react';
+import { Plus, TrendingUp, IndianRupee, Calendar, AlertCircle, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
+import { format, parseISO, isSameMonth, isSameYear } from 'date-fns';
 
 interface SalaryRecord {
   id: string;
@@ -22,10 +22,17 @@ interface SalaryRecord {
   is_bonus: boolean;
 }
 
+interface Profile {
+  id: string;
+  expected_monthly_salary: number | null;
+}
+
 export const SalaryOverview = () => {
   const [salaryRecords, setSalaryRecords] = useState<SalaryRecord[]>([]);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSalaryDialogOpen, setIsSalaryDialogOpen] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -35,25 +42,40 @@ export const SalaryOverview = () => {
   const [receivedDate, setReceivedDate] = useState('');
   const [description, setDescription] = useState('');
   const [isBonus, setIsBonus] = useState(false);
+  const [expectedMonthlySalary, setExpectedMonthlySalary] = useState('');
 
   useEffect(() => {
-    fetchSalaryRecords();
+    fetchData();
   }, []);
 
-  const fetchSalaryRecords = async () => {
+  const fetchData = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch salary records
+      const { data: salaryData, error: salaryError } = await supabase
         .from('salary_records')
         .select('*')
         .order('received_date', { ascending: false });
 
-      if (error) throw error;
-      setSalaryRecords(data || []);
+      if (salaryError) throw salaryError;
+      setSalaryRecords(salaryData || []);
+
+      // Fetch user profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user?.id)
+        .single();
+
+      if (profileError && profileError.code !== 'PGRST116') throw profileError;
+      setProfile(profileData);
+      if (profileData?.expected_monthly_salary) {
+        setExpectedMonthlySalary(profileData.expected_monthly_salary.toString());
+      }
     } catch (error) {
-      console.error('Error fetching salary records:', error);
+      console.error('Error fetching data:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch salary records",
+        description: "Failed to fetch data",
         variant: "destructive",
       });
     } finally {
@@ -93,7 +115,7 @@ export const SalaryOverview = () => {
       setIsDialogOpen(false);
 
       // Refresh data
-      fetchSalaryRecords();
+      fetchData();
     } catch (error) {
       console.error('Error adding salary record:', error);
       toast({
@@ -104,8 +126,59 @@ export const SalaryOverview = () => {
     }
   };
 
+  const updateExpectedSalary = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          expected_monthly_salary: parseFloat(expectedMonthlySalary),
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Expected monthly salary updated!",
+      });
+
+      setIsSalaryDialogOpen(false);
+      fetchData();
+    } catch (error) {
+      console.error('Error updating expected salary:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update expected salary",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const calculateMonthlyStats = () => {
+    const currentDate = new Date();
+    const currentMonthRecords = salaryRecords.filter(record => {
+      const recordDate = parseISO(record.received_date);
+      return isSameMonth(recordDate, currentDate) && isSameYear(recordDate, currentDate);
+    });
+
+    const currentMonthTotal = currentMonthRecords.reduce((sum, record) => sum + record.amount, 0);
+    const expectedSalary = profile?.expected_monthly_salary || 0;
+    const remainingBalance = expectedSalary - currentMonthTotal;
+
+    return {
+      currentMonthTotal,
+      expectedSalary,
+      remainingBalance,
+      currentMonthRecords
+    };
+  };
+
   const totalEarnings = salaryRecords.reduce((sum, record) => sum + record.amount, 0);
   const monthlyAverage = salaryRecords.length > 0 ? totalEarnings / salaryRecords.length : 0;
+  const { currentMonthTotal, expectedSalary, remainingBalance, currentMonthRecords } = calculateMonthlyStats();
 
   if (loading) {
     return <div className="text-center py-8">Loading...</div>;
@@ -113,42 +186,89 @@ export const SalaryOverview = () => {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Expected Monthly</CardTitle>
+            <IndianRupee className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">₹{expectedSalary.toLocaleString()}</div>
+            <Dialog open={isSalaryDialogOpen} onOpenChange={setIsSalaryDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="link" size="sm" className="p-0 h-auto text-xs">
+                  {expectedSalary ? 'Update' : 'Set'} expected salary
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Set Expected Monthly Salary</DialogTitle>
+                  <DialogDescription>
+                    Enter your expected monthly salary to track balance
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={updateExpectedSalary} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="expectedSalary">Monthly Salary (₹)</Label>
+                    <Input
+                      id="expectedSalary"
+                      type="number"
+                      value={expectedMonthlySalary}
+                      onChange={(e) => setExpectedMonthlySalary(e.target.value)}
+                      placeholder="50000"
+                      required
+                    />
+                  </div>
+                  <Button type="submit" className="w-full">
+                    Save Expected Salary
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">This Month Received</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">₹{currentMonthTotal.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">
+              {currentMonthRecords.length} payment(s) this month
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Remaining Balance</CardTitle>
+            {remainingBalance > 0 ? (
+              <AlertCircle className="h-4 w-4 text-amber-500" />
+            ) : (
+              <CheckCircle className="h-4 w-4 text-green-500" />
+            )}
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${remainingBalance < 0 ? 'text-green-600' : remainingBalance > 0 ? 'text-amber-600' : 'text-gray-900'}`}>
+              ₹{remainingBalance.toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {remainingBalance > 0 ? 'Pending this month' : remainingBalance < 0 ? 'Excess received' : 'Fully received'}
+            </p>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
-            <IndianRupee className="h-4 w-4 text-muted-foreground" />
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">₹{totalEarnings.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              All time earnings
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Average Income</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₹{monthlyAverage.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              Per record average
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Records</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{salaryRecords.length}</div>
-            <p className="text-xs text-muted-foreground">
-              Salary entries
+              {salaryRecords.length} total records
             </p>
           </CardContent>
         </Card>
@@ -217,7 +337,7 @@ export const SalaryOverview = () => {
                       id="description"
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
-                      placeholder="Regular salary, bonus, etc."
+                      placeholder="e.g., January 2024 salary, bonus, etc."
                     />
                   </div>
                   <div className="flex items-center space-x-2">
@@ -245,20 +365,26 @@ export const SalaryOverview = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {salaryRecords.map((record) => (
-                <div key={record.id} className="flex justify-between items-center p-4 border rounded-lg">
-                  <div>
-                    <div className="font-medium">₹{record.amount.toLocaleString()}</div>
-                    <div className="text-sm text-gray-500">
-                      {record.pay_period} • {format(new Date(record.received_date), 'MMM dd, yyyy')}
-                      {record.is_bonus && ' • Bonus'}
+              {salaryRecords.map((record) => {
+                const recordDate = parseISO(record.received_date);
+                const isCurrentMonth = isSameMonth(recordDate, new Date()) && isSameYear(recordDate, new Date());
+                
+                return (
+                  <div key={record.id} className={`flex justify-between items-center p-4 border rounded-lg ${isCurrentMonth ? 'bg-blue-50 border-blue-200' : ''}`}>
+                    <div>
+                      <div className="font-medium">₹{record.amount.toLocaleString()}</div>
+                      <div className="text-sm text-gray-500">
+                        {record.pay_period} • {format(recordDate, 'MMM dd, yyyy')}
+                        {record.is_bonus && ' • Bonus'}
+                        {isCurrentMonth && ' • This Month'}
+                      </div>
+                      {record.description && (
+                        <div className="text-sm text-gray-600">{record.description}</div>
+                      )}
                     </div>
-                    {record.description && (
-                      <div className="text-sm text-gray-600">{record.description}</div>
-                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
