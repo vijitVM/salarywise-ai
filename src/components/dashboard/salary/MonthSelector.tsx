@@ -26,14 +26,16 @@ export const MonthSelector = ({ viewMonth, setViewMonth }: MonthSelectorProps) =
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Salary Status Viewer</CardTitle>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base sm:text-lg">Salary Status Viewer</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center gap-3">
-          <Label htmlFor="monthSelect" className="text-sm font-medium">View Month:</Label>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
+          <Label htmlFor="monthSelect" className="text-sm font-medium whitespace-nowrap">
+            View Month:
+          </Label>
           <Select value={viewMonth} onValueChange={setViewMonth}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-full sm:w-48">
               <SelectValue />
               <ChevronDown className="h-4 w-4" />
             </SelectTrigger>

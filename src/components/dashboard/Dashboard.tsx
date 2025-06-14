@@ -11,38 +11,46 @@ export const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="container mx-auto px-4 py-6">
-        <div className="space-y-6">
-          <div className="text-center space-y-2">
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-gray-100 dark:to-gray-400 bg-clip-text text-transparent">
+      <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-6 max-w-7xl">
+        <div className="space-y-4 sm:space-y-6">
+          <div className="text-center space-y-2 px-2">
+            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-gray-100 dark:to-gray-400 bg-clip-text text-transparent">
               Financial Dashboard
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-sm sm:text-base text-muted-foreground">
               Manage your salary, transactions, budgets, and financial goals in one place
             </p>
           </div>
 
-          <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="overview">Salary Overview</TabsTrigger>
-              <TabsTrigger value="transactions">Transactions</TabsTrigger>
-              <TabsTrigger value="budgets">Budgets</TabsTrigger>
-              <TabsTrigger value="goals">Goals</TabsTrigger>
-            </TabsList>
+          <Tabs defaultValue="overview" className="space-y-4 sm:space-y-6">
+            <div className="overflow-x-auto">
+              <TabsList className="grid w-full grid-cols-4 min-w-fit mx-auto">
+                <TabsTrigger value="overview" className="text-xs sm:text-sm px-2 sm:px-4">
+                  <span className="hidden sm:inline">Salary Overview</span>
+                  <span className="sm:hidden">Salary</span>
+                </TabsTrigger>
+                <TabsTrigger value="transactions" className="text-xs sm:text-sm px-2 sm:px-4">
+                  <span className="hidden sm:inline">Transactions</span>
+                  <span className="sm:hidden">Txns</span>
+                </TabsTrigger>
+                <TabsTrigger value="budgets" className="text-xs sm:text-sm px-2 sm:px-4">Budgets</TabsTrigger>
+                <TabsTrigger value="goals" className="text-xs sm:text-sm px-2 sm:px-4">Goals</TabsTrigger>
+              </TabsList>
+            </div>
 
-            <TabsContent value="overview" className="space-y-6">
+            <TabsContent value="overview" className="space-y-4 sm:space-y-6">
               <SalaryOverview />
             </TabsContent>
 
-            <TabsContent value="transactions" className="space-y-6">
+            <TabsContent value="transactions" className="space-y-4 sm:space-y-6">
               <TransactionTracker />
             </TabsContent>
 
-            <TabsContent value="budgets" className="space-y-6">
+            <TabsContent value="budgets" className="space-y-4 sm:space-y-6">
               <BudgetManager />
             </TabsContent>
 
-            <TabsContent value="goals" className="space-y-6">
+            <TabsContent value="goals" className="space-y-4 sm:space-y-6">
               <FinancialGoals />
             </TabsContent>
           </Tabs>

@@ -61,32 +61,34 @@ export const SalaryInsightsCards = ({ salaryRecords, monthlyExpectedSalaries }: 
 
   return (
     <Card className="w-full">
-      <CardHeader>
-        <div className="flex items-center justify-between">
+      <CardHeader className="pb-3">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
-              <IconComponent className="h-5 w-5 text-white" />
+            <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex-shrink-0">
+              <IconComponent className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
             </div>
-            <div>
-              <CardTitle>{currentInsight.title}</CardTitle>
-              <CardDescription>{currentInsight.description}</CardDescription>
+            <div className="min-w-0">
+              <CardTitle className="text-base sm:text-lg">{currentInsight.title}</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">{currentInsight.description}</CardDescription>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 self-end sm:self-auto">
             <Button
               variant="outline"
               size="icon"
+              className="h-8 w-8"
               onClick={prevSlide}
               disabled={insights.length <= 1}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="text-sm text-muted-foreground min-w-[3rem] text-center">
+            <span className="text-xs sm:text-sm text-muted-foreground min-w-[3rem] text-center">
               {currentIndex + 1} / {insights.length}
             </span>
             <Button
               variant="outline"
               size="icon"
+              className="h-8 w-8"
               onClick={nextSlide}
               disabled={insights.length <= 1}
             >
@@ -95,8 +97,8 @@ export const SalaryInsightsCards = ({ salaryRecords, monthlyExpectedSalaries }: 
           </div>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="transition-all duration-300 ease-in-out">
+      <CardContent className="p-3 sm:p-6">
+        <div className="transition-all duration-300 ease-in-out overflow-x-auto">
           {currentInsight.component}
         </div>
       </CardContent>
