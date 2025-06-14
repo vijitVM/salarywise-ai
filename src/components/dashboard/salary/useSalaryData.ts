@@ -29,6 +29,7 @@ export const useSalaryData = () => {
 
       if (salaryError) throw salaryError;
       setSalaryRecords(salaryData || []);
+      console.log('Fetched salary records:', salaryData?.length);
 
       // Fetch user profile
       const { data: profileData, error: profileError } = await supabase
@@ -48,6 +49,7 @@ export const useSalaryData = () => {
 
       if (monthlyExpectedError) throw monthlyExpectedError;
       setMonthlyExpectedSalaries(monthlyExpectedData || []);
+      console.log('Fetched monthly expected salaries:', monthlyExpectedData?.length);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({
@@ -89,8 +91,8 @@ export const useSalaryData = () => {
         description: "Salary record added successfully!",
       });
 
-      // Refresh data
-      fetchData();
+      // Refresh data immediately after adding
+      await fetchData();
     } catch (error) {
       console.error('Error adding salary record:', error);
       toast({
@@ -120,7 +122,8 @@ export const useSalaryData = () => {
         description: "Expected monthly salary updated!",
       });
 
-      fetchData();
+      // Refresh data immediately after updating
+      await fetchData();
     } catch (error) {
       console.error('Error updating expected salary:', error);
       toast({
@@ -149,7 +152,8 @@ export const useSalaryData = () => {
         description: "Expected monthly salary updated!",
       });
 
-      fetchData();
+      // Refresh data immediately after updating
+      await fetchData();
     } catch (error) {
       console.error('Error updating expected salary:', error);
       toast({

@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSalaryData } from './salary/useSalaryData';
 import { useSalaryCalculations } from './salary/useSalaryCalculations';
 import { SalaryStatsCards } from './salary/SalaryStatsCards';
@@ -14,7 +14,8 @@ export const SalaryOverview = () => {
     monthlyExpectedSalaries, 
     loading, 
     addSalaryRecord, 
-    updateMonthlyExpectedSalary 
+    updateMonthlyExpectedSalary,
+    refetch
   } = useSalaryData();
   
   const { totalEarnings, monthlyStats } = useSalaryCalculations(
@@ -26,6 +27,7 @@ export const SalaryOverview = () => {
   // Dialog states
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSalaryDialogOpen, setIsSalaryDialogOpen] = useState(false);
+  const [dataVersion, setDataVersion] = useState(0);
 
   // Form states
   const [amount, setAmount] = useState('');
@@ -34,6 +36,11 @@ export const SalaryOverview = () => {
   const [salaryMonth, setSalaryMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [description, setDescription] = useState('');
   const [isBonus, setIsBonus] = useState(false);
+
+  // Update data version when salary records change to force chart re-render
+  useEffect(() => {
+    setDataVersion(prev => prev + 1);
+  }, [salaryRecords, monthlyExpectedSalaries]);
 
   const handleAddSalaryRecord = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,10 +62,15 @@ export const SalaryOverview = () => {
     setDescription('');
     setIsBonus(false);
     setIsDialogOpen(false);
+
+    // Force refresh of data to ensure charts get latest information
+    await refetch();
   };
 
   const handleUpdateMonthlyExpectedSalary = async (monthYear: string, amount: number) => {
     await updateMonthlyExpectedSalary(monthYear, amount);
+    // Force refresh after updating expected salary
+    await refetch();
   };
 
   if (loading) {
@@ -79,6 +91,7 @@ export const SalaryOverview = () => {
       />
 
       <SalaryInsightsCards 
+        key={dataVersion}
         salaryRecords={salaryRecords}
         monthlyExpectedSalaries={monthlyExpectedSalaries}
       />
