@@ -293,8 +293,6 @@ export const TransactionTracker = forwardRef<TransactionTrackerRef>((props, ref)
           )}
         </CardContent>
       </Card>
-
-      <SmartTransactionForm />
     </div>
   );
 });

@@ -50,11 +50,12 @@ export const useTransactionData = () => {
         throw error;
       }
 
-      // Map transaction_date to date for compatibility
+      // Map transaction_date to date and ensure proper typing
       const mappedTransactions = (data || []).map(transaction => ({
         ...transaction,
-        date: transaction.transaction_date
-      }));
+        date: transaction.transaction_date,
+        type: transaction.type as 'income' | 'expense' // Type assertion for proper typing
+      })) as Transaction[];
 
       setTransactions(mappedTransactions);
     } catch (error) {
@@ -95,10 +96,11 @@ export const useTransactionData = () => {
         throw error;
       }
 
-      // Map the new transaction and add to state
-      const mappedTransaction = {
+      // Map the new transaction and add to state with proper typing
+      const mappedTransaction: Transaction = {
         ...data,
-        date: data.transaction_date
+        date: data.transaction_date,
+        type: data.type as 'income' | 'expense'
       };
 
       setTransactions(prev => [mappedTransaction, ...prev]);
