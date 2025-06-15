@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
@@ -63,6 +64,12 @@ serve(async (req) => {
       return isNaN(parsed) || parsed < 0 ? 0 : parsed;
     };
 
+    // Safe string trimming function
+    const safeTrim = (value: any): string => {
+      if (value === null || value === undefined) return '';
+      return String(value).trim();
+    };
+
     // INCOME DEDUPLICATION LOGIC
     // Step 1: Get all transaction income
     const transactionIncome = financialData.transactions
@@ -109,25 +116,25 @@ serve(async (req) => {
     });
 
     // EXPENSE DEDUPLICATION LOGIC
-    // Step 1: Get transaction expenses with metadata
+    // Step 1: Get transaction expenses with metadata - using safe string handling
     const transactionExpenses = financialData.transactions
       .filter(t => t.type === 'expense' && validateAmount(t.amount) > 0)
       .map(t => ({
         amount: validateAmount(t.amount),
-        category: t.category?.trim() || 'Other',
+        category: safeTrim(t.category) || 'Other',
         date: t.transaction_date,
-        description: t.description?.trim() || '',
+        description: safeTrim(t.description),
         id: t.id
       }));
 
-    // Step 2: Get legacy expenses with metadata
+    // Step 2: Get legacy expenses with metadata - using safe string handling
     const legacyExpenses = financialData.expenses
       .filter(e => validateAmount(e.amount) > 0)
       .map(e => ({
         amount: validateAmount(e.amount),
-        category: e.category?.trim() || 'Other',
+        category: safeTrim(e.category) || 'Other',
         date: e.expense_date,
-        description: e.description?.trim() || '',
+        description: safeTrim(e.description),
         id: e.id
       }));
 
@@ -177,28 +184,28 @@ serve(async (req) => {
       categoryExpenses[category] = (categoryExpenses[category] || 0) + expense.amount;
     });
 
-    // Enhanced budget analysis with better validation
+    // Enhanced budget analysis with better validation and safe string handling
     const budgetAnalysis = financialData.budgets
       .filter(budget => validateAmount(budget.monthly_limit) > 0)
       .map(budget => {
         const spent = validateAmount(budget.current_spent);
         const limit = validateAmount(budget.monthly_limit);
         return {
-          category: budget.category,
+          category: safeTrim(budget.category) || 'Unknown',
           spent: Math.round(spent),
           limit: Math.round(limit),
           percentage: limit > 0 ? Math.round((spent / limit) * 100) : 0
         };
       });
 
-    // Enhanced goal analysis
+    // Enhanced goal analysis with safe string handling
     const goalProgress = financialData.goals
       .filter(g => validateAmount(g.target_amount) > 0)
       .map(g => {
         const current = validateAmount(g.current_amount);
         const target = validateAmount(g.target_amount);
         return {
-          title: g.title,
+          title: safeTrim(g.title) || 'Untitled Goal',
           progress: target > 0 ? Math.round((current / target) * 100) : 0,
           current: Math.round(current),
           target: Math.round(target)
