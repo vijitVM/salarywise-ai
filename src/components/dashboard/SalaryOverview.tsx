@@ -1,132 +1,128 @@
 
-import { useState, useEffect } from 'react';
-import { useSalaryData } from './salary/useSalaryData';
-import { useSalaryCalculations } from './salary/useSalaryCalculations';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { SalaryStatsCards } from './salary/SalaryStatsCards';
 import { SalaryRecordsList } from './salary/SalaryRecordsList';
-import { SalaryInsightsCards } from './salary/SalaryInsightsCards';
-import { SkeletonLoader } from '@/components/ui/skeleton-loader';
-import { format } from 'date-fns';
+import { useSalaryData } from './salary/useSalaryData';
+import { useSalaryCalculations } from './salary/useSalaryCalculations';
+import { useState, forwardRef, useImperativeHandle } from 'react';
+import { useToast } from '@/hooks/use-toast';
 
-export const SalaryOverview = () => {
-  const { 
-    salaryRecords, 
-    profile, 
-    monthlyExpectedSalaries, 
-    loading, 
-    addSalaryRecord, 
-    updateMonthlyExpectedSalary,
-    refetch
-  } = useSalaryData();
-  
-  const { totalEarnings, monthlyStats } = useSalaryCalculations(
-    salaryRecords, 
-    profile, 
-    monthlyExpectedSalaries
-  );
+interface SalaryOverviewRef {
+  openAddDialog: () => void;
+}
 
-  // Dialog states
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isSalaryDialogOpen, setIsSalaryDialogOpen] = useState(false);
-  const [dataVersion, setDataVersion] = useState(0);
+export const SalaryOverview = forwardRef<SalaryOverviewRef>((props, ref) => {
+  const { salaryRecords, profile, monthlyExpectedSalaries, loading, addSalaryRecord, updateMonthlyExpectedSalary } = useSalaryData();
+  const { monthlyStats, totalEarnings, totalRecords } = useSalaryCalculations(salaryRecords, profile, monthlyExpectedSalaries);
+  const { toast } = useToast();
 
   // Form states
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [amount, setAmount] = useState('');
   const [payPeriod, setPayPeriod] = useState('monthly');
   const [receivedDate, setReceivedDate] = useState('');
-  const [salaryMonth, setSalaryMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [salaryMonth, setSalaryMonth] = useState('');
   const [description, setDescription] = useState('');
   const [isBonus, setIsBonus] = useState(false);
+  const [isSalaryDialogOpen, setIsSalaryDialogOpen] = useState(false);
 
-  // Update data version when salary records change to force chart re-render
-  useEffect(() => {
-    setDataVersion(prev => prev + 1);
-  }, [salaryRecords, monthlyExpectedSalaries]);
+  // Expose openAddDialog method to parent
+  useImperativeHandle(ref, () => ({
+    openAddDialog: () => {
+      setIsDialogOpen(true);
+    }
+  }));
 
-  const handleAddSalaryRecord = async (e: React.FormEvent) => {
+  const handleAddRecord = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!amount || !receivedDate) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!isBonus && !salaryMonth) {
+      toast({
+        title: "Error",
+        description: "Please specify the salary month",
+        variant: "destructive",
+      });
+      return;
+    }
 
     await addSalaryRecord({
       amount: parseFloat(amount),
       pay_period: payPeriod,
       received_date: receivedDate,
-      salary_month: salaryMonth,
+      salary_month: isBonus ? '' : salaryMonth,
       description: description || null,
       is_bonus: isBonus,
     });
 
-    // Reset form and close dialog
+    // Reset form
     setAmount('');
     setPayPeriod('monthly');
     setReceivedDate('');
-    setSalaryMonth(format(new Date(), 'yyyy-MM'));
+    setSalaryMonth('');
     setDescription('');
     setIsBonus(false);
     setIsDialogOpen(false);
-
-    // Force refresh of data to ensure charts get latest information
-    await refetch();
-  };
-
-  const handleUpdateMonthlyExpectedSalary = async (monthYear: string, amount: number) => {
-    await updateMonthlyExpectedSalary(monthYear, amount);
-    // Force refresh after updating expected salary
-    await refetch();
   };
 
   if (loading) {
     return (
-      <div className="space-y-8 animate-fade-in">
-        <SkeletonLoader type="stats" />
-        <SkeletonLoader type="chart" count={2} />
-        <SkeletonLoader type="list" />
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i} className="animate-pulse">
+              <CardHeader className="space-y-2">
+                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-8 bg-gray-200 rounded w-1/2"></div>
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 animate-fade-in">
-      <div className="hover-lift">
-        <SalaryStatsCards
-          monthlyStats={monthlyStats}
-          totalEarnings={totalEarnings}
-          totalRecords={salaryRecords.length}
-          monthlyExpectedSalaries={monthlyExpectedSalaries}
-          salaryRecords={salaryRecords}
-          isSalaryDialogOpen={isSalaryDialogOpen}
-          setIsSalaryDialogOpen={setIsSalaryDialogOpen}
-          onUpdateMonthlyExpectedSalary={handleUpdateMonthlyExpectedSalary}
-        />
-      </div>
-
-      <div className="hover-lift">
-        <SalaryInsightsCards 
-          key={dataVersion}
-          salaryRecords={salaryRecords}
-          monthlyExpectedSalaries={monthlyExpectedSalaries}
-        />
-      </div>
-
-      <div className="hover-lift">
-        <SalaryRecordsList
-          salaryRecords={salaryRecords}
-          isDialogOpen={isDialogOpen}
-          setIsDialogOpen={setIsDialogOpen}
-          amount={amount}
-          setAmount={setAmount}
-          payPeriod={payPeriod}
-          setPayPeriod={setPayPeriod}
-          receivedDate={receivedDate}
-          setReceivedDate={setReceivedDate}
-          salaryMonth={salaryMonth}
-          setSalaryMonth={setSalaryMonth}
-          description={description}
-          setDescription={setDescription}
-          isBonus={isBonus}
-          setIsBonus={setIsBonus}
-          onAddRecord={handleAddSalaryRecord}
-        />
-      </div>
+    <div className="space-y-4 sm:space-y-6">
+      <SalaryStatsCards
+        monthlyStats={monthlyStats}
+        totalEarnings={totalEarnings}
+        totalRecords={totalRecords}
+        monthlyExpectedSalaries={monthlyExpectedSalaries}
+        salaryRecords={salaryRecords}
+        isSalaryDialogOpen={isSalaryDialogOpen}
+        setIsSalaryDialogOpen={setIsSalaryDialogOpen}
+        onUpdateMonthlyExpectedSalary={updateMonthlyExpectedSalary}
+      />
+      
+      <SalaryRecordsList
+        salaryRecords={salaryRecords}
+        isDialogOpen={isDialogOpen}
+        setIsDialogOpen={setIsDialogOpen}
+        amount={amount}
+        setAmount={setAmount}
+        payPeriod={payPeriod}
+        setPayPeriod={setPayPeriod}
+        receivedDate={receivedDate}
+        setReceivedDate={setReceivedDate}
+        salaryMonth={salaryMonth}
+        setSalaryMonth={setSalaryMonth}
+        description={description}
+        setDescription={setDescription}
+        isBonus={isBonus}
+        setIsBonus={setIsBonus}
+        onAddRecord={handleAddRecord}
+      />
     </div>
   );
-};
+});
+
+SalaryOverview.displayName = 'SalaryOverview';

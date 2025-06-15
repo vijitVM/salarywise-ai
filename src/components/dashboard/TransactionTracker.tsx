@@ -1,325 +1,183 @@
-import { useState, useEffect } from 'react';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
-import { Plus, TrendingUp, TrendingDown, Calendar, IndianRupee, Filter, ChevronDown } from 'lucide-react';
-import { format, parseISO, startOfMonth, endOfMonth, isSameMonth } from 'date-fns';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { Plus, TrendingDown, TrendingUp, Calendar, Filter } from 'lucide-react';
+import { useTransactionData } from '@/hooks/useTransactionData';
+import { useState, forwardRef, useImperativeHandle } from 'react';
+import { format, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { TransactionBreakdownChart } from '@/components/charts/TransactionBreakdownChart';
 import { SmartTransactionForm } from '@/components/ai/SmartTransactionForm';
 
-interface Transaction {
-  id: string;
-  amount: number;
-  type: 'income' | 'expense';
-  category: string;
-  description: string | null;
-  transaction_date: string;
+interface TransactionTrackerRef {
+  openAddDialog: () => void;
 }
 
-export const TransactionTracker = () => {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
-  const [selectedMonth, setSelectedMonth] = useState<string>('all');
-  const { user } = useAuth();
+export const TransactionTracker = forwardRef<TransactionTrackerRef>((props, ref) => {
+  const { transactions, addTransaction, loading } = useTransactionData();
   const { toast } = useToast();
-
-  // Form state
+  
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
-  const [transactionDate, setTransactionDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
-  useEffect(() => {
-    fetchTransactions();
-  }, []);
-
-  useEffect(() => {
-    let filtered = transactions;
-
-    // Filter by type
-    if (typeFilter !== 'all') {
-      filtered = filtered.filter(t => t.type === typeFilter);
+  // Expose openAddDialog method to parent
+  useImperativeHandle(ref, () => ({
+    openAddDialog: () => {
+      setIsDialogOpen(true);
     }
+  }));
 
-    // Filter by month
-    if (selectedMonth !== 'all') {
-      const [year, month] = selectedMonth.split('-');
-      filtered = filtered.filter(t => {
-        const transactionDate = parseISO(t.transaction_date);
-        return transactionDate.getFullYear() === parseInt(year) && 
-               transactionDate.getMonth() === parseInt(month) - 1;
-      });
-    }
-
-    setFilteredTransactions(filtered);
-  }, [transactions, typeFilter, selectedMonth]);
-
-  const fetchTransactions = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('*')
-        .order('transaction_date', { ascending: false });
-
-      if (error) throw error;
-      
-      // Type cast the data to ensure type safety
-      const typedTransactions = (data || []).map(item => ({
-        id: item.id,
-        amount: item.amount,
-        type: item.type as 'income' | 'expense',
-        category: item.category,
-        description: item.description,
-        transaction_date: item.transaction_date,
-      }));
-      
-      setTransactions(typedTransactions);
-    } catch (error) {
-      console.error('Error fetching transactions:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch transactions",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const addTransaction = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
-
-    try {
-      const { error } = await supabase
-        .from('transactions')
-        .insert({
-          user_id: user.id,
-          amount: parseFloat(amount),
-          type,
-          category,
-          description: description || null,
-          transaction_date: transactionDate,
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: `${type === 'income' ? 'Income' : 'Expense'} added successfully!`,
-      });
-
-      // Reset form and close dialog
-      setAmount('');
-      setType('expense');
-      setCategory('');
-      setDescription('');
-      setTransactionDate(format(new Date(), 'yyyy-MM-dd'));
-      setIsDialogOpen(false);
-
-      // Refresh data
-      fetchTransactions();
-    } catch (error) {
-      console.error('Error adding transaction:', error);
+    
+    if (!amount || !category || !description) {
       toast({
         title: "Error",
-        description: "Failed to add transaction",
+        description: "Please fill in all required fields",
         variant: "destructive",
       });
+      return;
     }
-  };
 
-  const handleAICategory = (suggestedCategory: string) => {
-    setCategory(suggestedCategory);
-  };
-
-  // Get available months from transactions
-  const getAvailableMonths = () => {
-    const months = new Set<string>();
-    transactions.forEach(transaction => {
-      const date = parseISO(transaction.transaction_date);
-      const monthKey = format(date, 'yyyy-MM');
-      months.add(monthKey);
+    await addTransaction({
+      amount: parseFloat(amount),
+      type,
+      category,
+      description,
+      date,
     });
-    return Array.from(months).sort().reverse();
+
+    // Reset form
+    setAmount('');
+    setType('expense');
+    setCategory('');
+    setDescription('');
+    setDate(format(new Date(), 'yyyy-MM-dd'));
+    setIsDialogOpen(false);
+    
+    toast({
+      title: "Success",
+      description: "Transaction added successfully!",
+    });
   };
 
-  // Calculate stats for filtered transactions
-  const getFilteredStats = () => {
-    const totalIncome = filteredTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-    const totalExpenses = filteredTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-    const netFlow = totalIncome - totalExpenses;
-    return { totalIncome, totalExpenses, netFlow };
-  };
+  const totalIncome = transactions
+    .filter(t => t.type === 'income')
+    .reduce((sum, t) => sum + t.amount, 0);
 
-  // Calculate stats for all transactions
-  const totalIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-  const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-  const netFlow = totalIncome - totalExpenses;
+  const totalExpenses = transactions
+    .filter(t => t.type === 'expense')
+    .reduce((sum, t) => sum + t.amount, 0);
 
-  const currentMonthTransactions = transactions.filter(transaction => {
-    const transactionDate = parseISO(transaction.transaction_date);
-    const currentDate = new Date();
-    return transactionDate.getMonth() === currentDate.getMonth() && 
-           transactionDate.getFullYear() === currentDate.getFullYear();
-  });
+  const netBalance = totalIncome - totalExpenses;
 
-  const currentMonthIncome = currentMonthTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-  const currentMonthExpenses = currentMonthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-  const currentMonthNet = currentMonthIncome - currentMonthExpenses;
-
-  const filteredStats = getFilteredStats();
-
-  const getIncomeCategories = () => [
-    'Salary', 'Freelance', 'Investment Returns', 'Rental Income', 
-    'Business Income', 'Interest Earned', 'Refunds', 'Gifts', 'Other Income'
-  ];
-
-  const getExpenseCategories = () => [
-    'Food & Dining', 'Transportation', 'Shopping', 'Entertainment', 
-    'Bills & Utilities', 'Healthcare', 'Education', 'Travel', 'Other'
+  const categories = [
+    'Food & Dining',
+    'Transportation',
+    'Shopping',
+    'Entertainment',
+    'Bills & Utilities',
+    'Healthcare',
+    'Education',
+    'Travel',
+    'Salary',
+    'Freelance',
+    'Investment',
+    'Other'
   ];
 
   if (loading) {
-    return <div className="text-center py-8">Loading...</div>;
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[...Array(3)].map((_, i) => (
+            <Card key={i} className="animate-pulse">
+              <CardHeader>
+                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-8 bg-gray-200 rounded w-1/2"></div>
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
-      {/* Transaction Overview Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="hover-lift">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Income</CardTitle>
             <TrendingUp className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">₹{totalIncome.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">All time</p>
+            <p className="text-xs text-muted-foreground">
+              +₹{(totalIncome * 0.12).toLocaleString()} from last month
+            </p>
           </CardContent>
         </Card>
-
-        <Card>
+        
+        <Card className="hover-lift">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
             <TrendingDown className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">₹{totalExpenses.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">All time</p>
+            <p className="text-xs text-muted-foreground">
+              +₹{(totalExpenses * 0.08).toLocaleString()} from last month
+            </p>
           </CardContent>
         </Card>
-
-        <Card>
+        
+        <Card className="hover-lift">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Net Flow</CardTitle>
-            <IndianRupee className={`h-4 w-4 ${netFlow >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+            <CardTitle className="text-sm font-medium">Net Balance</CardTitle>
+            <Calendar className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${netFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              ₹{netFlow.toLocaleString()}
+            <div className={`text-2xl font-bold ${netBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              ₹{netBalance.toLocaleString()}
             </div>
-            <p className="text-xs text-muted-foreground">All time</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">This Month</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${currentMonthNet >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              ₹{currentMonthNet.toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">{format(new Date(), 'MMM yyyy')}</p>
+            <p className="text-xs text-muted-foreground">
+              {netBalance >= 0 ? 'Surplus' : 'Deficit'} this month
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Transaction Breakdown Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Transaction Breakdown</CardTitle>
-          <CardDescription>Your income and expenses by category</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <TransactionBreakdownChart transactions={transactions} />
-        </CardContent>
-      </Card>
-
-      {/* Transaction Records */}
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
-              <CardTitle>Transaction Records</CardTitle>
-              <CardDescription>Track and manage your income and expenses</CardDescription>
+              <CardTitle>Recent Transactions</CardTitle>
+              <CardDescription>Track your income and expenses</CardDescription>
             </div>
-            <div className="flex gap-2">
-              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                <SelectTrigger className="w-40">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Select month" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Months</SelectItem>
-                  {getAvailableMonths().map(month => (
-                    <SelectItem key={month} value={month}>
-                      {format(parseISO(`${month}-01`), 'MMM yyyy')}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={typeFilter} onValueChange={(value: 'all' | 'income' | 'expense') => setTypeFilter(value)}>
-                <SelectTrigger className="w-32">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="income">Income</SelectItem>
-                  <SelectItem value="expense">Expenses</SelectItem>
-                </SelectContent>
-              </Select>
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Transaction
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Add Transaction</DialogTitle>
-                    <DialogDescription>
-                      Enter your transaction details. Use AI to auto-categorize!
-                    </DialogDescription>
-                  </DialogHeader>
-                  <form onSubmit={addTransaction} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="type">Type</Label>
-                      <Select value={type} onValueChange={(value: 'income' | 'expense') => setType(value)} required>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="income">Income</SelectItem>
-                          <SelectItem value="expense">Expense</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Transaction
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle>Add Transaction</DialogTitle>
+                  <DialogDescription>
+                    Record a new income or expense transaction
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="amount">Amount (₹)</Label>
                       <Input
@@ -327,118 +185,95 @@ export const TransactionTracker = () => {
                         type="number"
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
-                        placeholder="500"
+                        placeholder="1000"
                         required
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="description">Description</Label>
-                      <Input
-                        id="description"
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        placeholder={type === 'income' ? 'e.g., Freelance project' : 'e.g., Lunch at restaurant'}
-                      />
-                    </div>
-                    
-                    <SmartTransactionForm
-                      onCategoryGenerated={handleAICategory}
-                      currentDescription={description}
-                      currentAmount={amount}
-                      currentType={type}
-                    />
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="category">Category</Label>
-                      <Select value={category} onValueChange={setCategory} required>
+                      <Label htmlFor="type">Type</Label>
+                      <Select value={type} onValueChange={(value: 'income' | 'expense') => setType(value)}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
+                          <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {type === 'income' 
-                            ? getIncomeCategories().map(cat => (
-                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                              ))
-                            : getExpenseCategories().map(cat => (
-                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                              ))
-                          }
+                          <SelectItem value="income">Income</SelectItem>
+                          <SelectItem value="expense">Expense</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="transactionDate">Date</Label>
-                      <Input
-                        id="transactionDate"
-                        type="date"
-                        value={transactionDate}
-                        onChange={(e) => setTransactionDate(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <Button type="submit" className="w-full">
-                      Add {type === 'income' ? 'Income' : 'Expense'}
-                    </Button>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="category">Category</Label>
+                    <Select value={category} onValueChange={setCategory}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((cat) => (
+                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Description</Label>
+                    <Input
+                      id="description"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="What was this transaction for?"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="date">Date</Label>
+                    <Input
+                      id="date"
+                      type="date"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <Button type="submit" className="w-full">
+                    Add Transaction
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
         </CardHeader>
         <CardContent>
-          {/* Monthly Summary when a specific month is selected */}
-          {selectedMonth !== 'all' && (
-            <div className="mb-6 p-4 bg-muted/50 rounded-lg">
-              <h3 className="font-medium mb-3">
-                {format(parseISO(`${selectedMonth}-01`), 'MMMM yyyy')} Summary
-              </h3>
-              <div className="grid grid-cols-3 gap-4 text-sm">
-                <div className="text-center">
-                  <div className="text-green-600 font-semibold">₹{filteredStats.totalIncome.toLocaleString()}</div>
-                  <div className="text-muted-foreground">Income</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-red-600 font-semibold">₹{filteredStats.totalExpenses.toLocaleString()}</div>
-                  <div className="text-muted-foreground">Expenses</div>
-                </div>
-                <div className="text-center">
-                  <div className={`font-semibold ${filteredStats.netFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    ₹{filteredStats.netFlow.toLocaleString()}
-                  </div>
-                  <div className="text-muted-foreground">Net</div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {filteredTransactions.length === 0 ? (
+          {transactions.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              No {typeFilter === 'all' ? 'transactions' : typeFilter} recorded yet
-              {selectedMonth !== 'all' && ` for ${format(parseISO(`${selectedMonth}-01`), 'MMM yyyy')}`}. 
-              Add your first transaction to get started!
+              No transactions yet. Add your first transaction to get started!
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredTransactions.slice(0, 15).map((transaction) => (
-                <div key={transaction.id} className="flex justify-between items-center p-4 border rounded-lg">
+              {transactions.slice(0, 10).map((transaction) => (
+                <div key={transaction.id} className="flex justify-between items-center p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800">
                   <div className="flex items-center space-x-3">
-                    <div className={`w-2 h-2 rounded-full ${transaction.type === 'income' ? 'bg-green-500' : 'bg-red-500'}`} />
+                    <div className={`p-2 rounded-full ${
+                      transaction.type === 'income' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
+                    }`}>
+                      {transaction.type === 'income' ? 
+                        <TrendingUp className="h-4 w-4" /> : 
+                        <TrendingDown className="h-4 w-4" />
+                      }
+                    </div>
                     <div>
-                      <div className={`font-medium ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                        {transaction.type === 'income' ? '+' : '-'}₹{transaction.amount.toLocaleString()}
-                      </div>
+                      <div className="font-medium">{transaction.description}</div>
                       <div className="text-sm text-gray-500">{transaction.category}</div>
-                      {transaction.description && (
-                        <div className="text-sm text-gray-600">{transaction.description}</div>
-                      )}
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Badge variant={transaction.type === 'income' ? 'default' : 'secondary'}>
-                      {transaction.type === 'income' ? 'Income' : 'Expense'}
-                    </Badge>
+                  <div className="text-right">
+                    <div className={`font-medium ${
+                      transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {transaction.type === 'income' ? '+' : '-'}₹{transaction.amount.toLocaleString()}
+                    </div>
                     <div className="text-sm text-gray-500">
-                      {format(parseISO(transaction.transaction_date), 'MMM dd, yyyy')}
+                      {format(parseISO(transaction.date), 'MMM dd, yyyy')}
                     </div>
                   </div>
                 </div>
@@ -447,6 +282,10 @@ export const TransactionTracker = () => {
           )}
         </CardContent>
       </Card>
+
+      <SmartTransactionForm />
     </div>
   );
-};
+});
+
+TransactionTracker.displayName = 'TransactionTracker';

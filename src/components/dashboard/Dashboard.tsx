@@ -12,29 +12,51 @@ import { GlobalSearch } from '@/components/search/GlobalSearch';
 import { FloatingActionButton } from '@/components/ui/floating-action-button';
 import { SmartInsights } from '@/components/insights/SmartInsights';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { DollarSign, Target, TrendingUp, Search } from 'lucide-react';
 
 export const Dashboard = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
+  
+  // References to child components for triggering actions
+  const salaryOverviewRef = useRef<{ openAddDialog: () => void } | null>(null);
+  const transactionTrackerRef = useRef<{ openAddDialog: () => void } | null>(null);
+  const financialGoalsRef = useRef<{ openAddDialog: () => void } | null>(null);
 
   const fabActions = [
     {
       icon: DollarSign,
       label: 'Add Salary',
-      onClick: () => console.log('Add salary'),
+      onClick: () => {
+        setActiveTab('overview');
+        // Give a small delay to ensure tab is switched before opening dialog
+        setTimeout(() => {
+          salaryOverviewRef.current?.openAddDialog();
+        }, 100);
+      },
       color: 'bg-green-600 hover:bg-green-700'
     },
     {
       icon: TrendingUp,
       label: 'Add Transaction',
-      onClick: () => console.log('Add transaction'),
+      onClick: () => {
+        setActiveTab('transactions');
+        setTimeout(() => {
+          transactionTrackerRef.current?.openAddDialog();
+        }, 100);
+      },
       color: 'bg-blue-600 hover:bg-blue-700'
     },
     {
       icon: Target,
       label: 'Set Goal',
-      onClick: () => console.log('Set goal'),
+      onClick: () => {
+        setActiveTab('goals');
+        setTimeout(() => {
+          financialGoalsRef.current?.openAddDialog();
+        }, 100);
+      },
       color: 'bg-purple-600 hover:bg-purple-700'
     }
   ];
@@ -45,7 +67,7 @@ export const Dashboard = () => {
       type: 'positive' as const,
       title: 'Great Progress!',
       description: 'You\'re 15% ahead of your monthly salary target',
-      value: '+$1,250',
+      value: '+₹1,250',
       trend: 'up' as const
     },
     {
@@ -60,7 +82,7 @@ export const Dashboard = () => {
       type: 'achievement' as const,
       title: 'Milestone Reached',
       description: 'You\'ve saved 20% of your target this month!',
-      value: '$2,500'
+      value: '₹2,500'
     }
   ];
 
@@ -90,7 +112,7 @@ export const Dashboard = () => {
               <SmartInsights insights={sampleInsights} />
             </div>
 
-            <Tabs defaultValue="overview" className="space-y-4 sm:space-y-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
               <div className="overflow-x-auto">
                 <TabsList className="grid w-full grid-cols-4 min-w-fit mx-auto">
                   <TabsTrigger value="overview" className="text-xs sm:text-sm px-2 sm:px-4 hover-glow">
@@ -107,11 +129,11 @@ export const Dashboard = () => {
               </div>
 
               <TabsContent value="overview" className="space-y-4 sm:space-y-6 tab-content">
-                <SalaryOverview />
+                <SalaryOverview ref={salaryOverviewRef} />
               </TabsContent>
 
               <TabsContent value="transactions" className="space-y-4 sm:space-y-6 tab-content">
-                <TransactionTracker />
+                <TransactionTracker ref={transactionTrackerRef} />
               </TabsContent>
 
               <TabsContent value="budgets" className="space-y-4 sm:space-y-6 tab-content">
@@ -119,7 +141,7 @@ export const Dashboard = () => {
               </TabsContent>
 
               <TabsContent value="goals" className="space-y-4 sm:space-y-6 tab-content">
-                <FinancialGoals />
+                <FinancialGoals ref={financialGoalsRef} />
               </TabsContent>
             </Tabs>
           </div>
