@@ -1,5 +1,5 @@
 
-import { Brain, TrendingUp, TrendingDown, AlertCircle, CheckCircle } from 'lucide-react';
+import { Brain, TrendingUp, TrendingDown, AlertCircle, CheckCircle, IndianRupee } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
@@ -35,6 +35,15 @@ export const SmartInsights = ({ insights }: SmartInsightsProps) => {
     }
   };
 
+  // Function to ensure amounts are displayed in Indian Rupees
+  const formatCurrency = (text: string) => {
+    // Replace any dollar signs with rupee symbol
+    return text
+      .replace(/\$/g, '₹')
+      .replace(/USD/g, 'INR')
+      .replace(/dollars?/gi, 'rupees');
+  };
+
   return (
     <Card className="hover-lift">
       <CardHeader className="pb-3">
@@ -55,7 +64,7 @@ export const SmartInsights = ({ insights }: SmartInsightsProps) => {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <h4 className="font-medium text-sm">{insight.title}</h4>
+                  <h4 className="font-medium text-sm">{formatCurrency(insight.title)}</h4>
                   {insight.trend && (
                     <Badge variant="outline" className="h-5">
                       {insight.trend === 'up' ? (
@@ -68,9 +77,12 @@ export const SmartInsights = ({ insights }: SmartInsightsProps) => {
                     </Badge>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">{insight.description}</p>
+                <p className="text-xs text-muted-foreground">{formatCurrency(insight.description)}</p>
                 {insight.value && (
-                  <p className="text-sm font-mono font-medium mt-1">{insight.value}</p>
+                  <p className="text-sm font-mono font-medium mt-1 flex items-center gap-1">
+                    <IndianRupee className="h-3 w-3" />
+                    {formatCurrency(insight.value).replace('₹', '')}
+                  </p>
                 )}
               </div>
             </div>

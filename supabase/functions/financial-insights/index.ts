@@ -236,24 +236,25 @@ serve(async (req) => {
 
     console.log('Final deduplicated data for AI:', dataForAI);
 
-    // Enhanced system prompt with stricter requirements and deduplication info
+    // Enhanced system prompt with stricter requirements for Indian Rupees
     const systemPrompt = `You are a financial insights AI for an Indian user. Analyze the provided financial data and generate EXACTLY 4 insights as a JSON array.
 
 CRITICAL FORMATTING REQUIREMENTS:
-1. ALWAYS use ₹ symbol for ALL currency amounts (NEVER use $ or any other symbol)
+1. ALWAYS use ₹ symbol for ALL currency amounts (NEVER use $ or USD or any other currency symbol)
 2. Format large amounts with Indian comma system: ₹1,35,284 (not ₹135,284)
 3. Use EXACT numbers from the provided data - do not estimate or round differently
 4. Each insight must have: type, title, description, metric
+5. ALL text must be in context of Indian financial system and use Indian Rupees only
 
 DEDUPLICATION NOTE: The data provided has been deduplicated between legacy tables and transactions to ensure accuracy.
 
-EXACT DATA TO USE:
+EXACT DATA TO USE (ALL IN INDIAN RUPEES):
 - Total Income: ₹${dataForAI.totalIncome.toLocaleString('en-IN')}
 - Total Expenses: ₹${dataForAI.totalExpenses.toLocaleString('en-IN')}
 - Net Savings: ₹${dataForAI.netSavings.toLocaleString('en-IN')}
 - Savings Rate: ${dataForAI.savingsRate}%
 
-TOP EXPENSE CATEGORIES:
+TOP EXPENSE CATEGORIES (ALL IN INDIAN RUPEES):
 ${dataForAI.categoryBreakdown.map(([cat, amt]) => `${cat}: ₹${amt.toLocaleString('en-IN')}`).join('\n')}
 
 INSIGHT TYPES:
@@ -261,19 +262,21 @@ INSIGHT TYPES:
 - "warning": for concerning patterns (savings rate <10%, high discretionary spending)
 - "suggestion": for actionable improvements
 
-TITLE RULES: Maximum 4 words, descriptive
-DESCRIPTION RULES: 1-2 sentences with specific amounts and percentages from data
-METRIC RULES: Always include relevant ₹ amounts or percentages
+TITLE RULES: Maximum 4 words, descriptive, NO CURRENCY SYMBOLS IN TITLES
+DESCRIPTION RULES: 1-2 sentences with specific amounts in ₹ and percentages from data
+METRIC RULES: Always include relevant ₹ amounts or percentages, use ₹ symbol consistently
+
+IMPORTANT: Never use $, USD, dollars, or any non-Indian currency references. Everything must be in Indian Rupees (₹).
 
 Generate insights about:
-1. Savings rate analysis
-2. Highest expense category concerns/observations
-3. Budget utilization or spending patterns
-4. Goal progress or financial recommendations
+1. Savings rate analysis with ₹ amounts
+2. Highest expense category concerns/observations with ₹ amounts
+3. Budget utilization or spending patterns with ₹ amounts
+4. Goal progress or financial recommendations with ₹ amounts
 
-Respond with ONLY valid JSON array - no markdown, no explanations.`;
+Respond with ONLY valid JSON array - no markdown, no explanations. All amounts MUST use ₹ symbol.`;
 
-    console.log('Making request to OpenAI API with GPT-4.1...');
+    console.log('Making request to OpenAI API with GPT-4.1 for Indian Rupee formatting...');
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -284,7 +287,7 @@ Respond with ONLY valid JSON array - no markdown, no explanations.`;
         model: 'gpt-4.1-2025-04-14',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Generate 4 financial insights for this deduplicated data: ${JSON.stringify(dataForAI)}` }
+          { role: 'user', content: `Generate 4 financial insights for this Indian user's deduplicated data (all amounts in Indian Rupees): ${JSON.stringify(dataForAI)}` }
         ],
         temperature: 0.1, // Very low temperature for consistency
         max_tokens: 1000,
@@ -298,7 +301,7 @@ Respond with ONLY valid JSON array - no markdown, no explanations.`;
     }
 
     const data = await response.json();
-    console.log('OpenAI GPT-4.1 response received successfully');
+    console.log('OpenAI GPT-4.1 response received successfully for Indian Rupee formatting');
     
     let content = data.choices[0].message.content;
     
@@ -309,7 +312,13 @@ Respond with ONLY valid JSON array - no markdown, no explanations.`;
       .replace(/^\s*`+|`+\s*$/g, '')
       .trim();
     
-    console.log('Cleaned content:', content);
+    // Additional cleanup to ensure Indian Rupee formatting
+    content = content
+      .replace(/\$/g, '₹')
+      .replace(/USD/g, 'INR')
+      .replace(/dollars?/gi, 'rupees');
+    
+    console.log('Cleaned content with Indian Rupee formatting:', content);
     
     try {
       const insights = JSON.parse(content);
@@ -319,10 +328,25 @@ Respond with ONLY valid JSON array - no markdown, no explanations.`;
         throw new Error('Invalid insights format - expected array of 4 insights');
       }
       
-      // Validate each insight
+      // Validate each insight and ensure proper currency formatting
       insights.forEach((insight, index) => {
         if (!insight.type || !insight.title || !insight.description) {
           throw new Error(`Invalid insight at index ${index} - missing required fields`);
+        }
+        
+        // Ensure all currency references use Indian Rupees
+        if (insight.description) {
+          insight.description = insight.description
+            .replace(/\$/g, '₹')
+            .replace(/USD/g, 'INR')
+            .replace(/dollars?/gi, 'rupees');
+        }
+        
+        if (insight.metric) {
+          insight.metric = insight.metric
+            .replace(/\$/g, '₹')
+            .replace(/USD/g, 'INR')
+            .replace(/dollars?/gi, 'rupees');
         }
       });
 
@@ -331,15 +355,16 @@ Respond with ONLY valid JSON array - no markdown, no explanations.`;
         summary: dataForAI,
         debug: {
           deduplicationMethod: 'smart_comparison',
+          currencyFormat: 'Indian Rupees (₹)',
           calculationLogic: {
             income: 'salary_records prioritized, transactions as fallback with discrepancy detection',
             expenses: 'deduplicated by amount, category, and date proximity (7-day window)',
             duplicatesRemoved: dataForAI.dataQuality.deduplicationStats.duplicatesRemoved
           },
           validation: {
-            totalIncome: dataForAI.totalIncome,
-            totalExpenses: dataForAI.totalExpenses,
-            netSavings: dataForAI.netSavings,
+            totalIncome: `₹${dataForAI.totalIncome.toLocaleString('en-IN')}`,
+            totalExpenses: `₹${dataForAI.totalExpenses.toLocaleString('en-IN')}`,
+            netSavings: `₹${dataForAI.netSavings.toLocaleString('en-IN')}`,
             savingsRate: dataForAI.savingsRate + '%',
             categoryCount: Object.keys(categoryExpenses).length,
             recordCounts: {
