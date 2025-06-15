@@ -20,15 +20,21 @@ export const useSalaryData = () => {
     }
 
     try {
-      // Fetch salary records
+      // Fetch salary records in descending order by received_date (most recent first)
       const { data: salaryData, error: salaryError } = await supabase
         .from('salary_records')
         .select('*')
         .order('received_date', { ascending: false });
 
       if (salaryError) throw salaryError;
-      setSalaryRecords(salaryData || []);
-      console.log('Fetched salary records:', salaryData?.length);
+      
+      // Sort again on the client side to ensure consistent ordering
+      const sortedSalaryData = (salaryData || []).sort((a, b) => 
+        new Date(b.received_date).getTime() - new Date(a.received_date).getTime()
+      );
+      
+      setSalaryRecords(sortedSalaryData);
+      console.log('Fetched salary records:', sortedSalaryData?.length);
 
       // Fetch user profile
       const { data: profileData, error: profileError } = await supabase
