@@ -1,11 +1,10 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, TrendingDown, TrendingUp, Calendar, Filter } from 'lucide-react';
+import { Plus, TrendingDown, TrendingUp, Calendar } from 'lucide-react';
 import { useTransactionData } from '@/hooks/useTransactionData';
 import { useState, forwardRef, useImperativeHandle } from 'react';
 import { format, parseISO } from 'date-fns';
@@ -66,6 +65,10 @@ export const TransactionTracker = forwardRef<TransactionTrackerRef>((props, ref)
       title: "Success",
       description: "Transaction added successfully!",
     });
+  };
+
+  const handleCategoryGenerated = (generatedCategory: string) => {
+    setCategory(generatedCategory);
   };
 
   const totalIncome = transactions
@@ -235,6 +238,14 @@ export const TransactionTracker = forwardRef<TransactionTrackerRef>((props, ref)
                       required
                     />
                   </div>
+
+                  <SmartTransactionForm 
+                    onCategoryGenerated={handleCategoryGenerated}
+                    currentDescription={description}
+                    currentAmount={amount}
+                    currentType={type}
+                  />
+
                   <Button type="submit" className="w-full">
                     Add Transaction
                   </Button>
