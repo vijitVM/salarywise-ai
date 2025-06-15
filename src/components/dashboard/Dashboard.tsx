@@ -1,4 +1,3 @@
-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SalaryOverview } from './SalaryOverview';
 import { TransactionTracker } from './TransactionTracker';
