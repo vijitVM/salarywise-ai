@@ -1,3 +1,4 @@
+
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { LogOut, User, TrendingUp, Menu } from 'lucide-react';
@@ -7,6 +8,8 @@ import { useSalaryData } from '@/components/dashboard/salary/useSalaryData';
 import { useTransactionData } from '@/hooks/useTransactionData';
 import { useState } from 'react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 export const Header = () => {
   const { user, signOut } = useAuth();
@@ -24,11 +27,22 @@ export const Header = () => {
     transactions,
   };
 
+  const getInitials = (email: string) => {
+    return email.split('@')[0].substring(0, 2).toUpperCase();
+  };
+
   const MobileMenu = () => (
     <div className="flex flex-col space-y-4 p-4">
-      <div className="flex items-center space-x-2 pb-4 border-b">
-        <User className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm font-medium truncate">{user?.email}</span>
+      <div className="flex items-center space-x-3 pb-4 border-b">
+        <Avatar className="h-8 w-8">
+          <AvatarFallback className="text-xs bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+            {user?.email ? getInitials(user.email) : 'U'}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium truncate">{user?.email}</p>
+          <p className="text-xs text-muted-foreground">Welcome back!</p>
+        </div>
       </div>
       
       <div className="space-y-3">
@@ -38,7 +52,7 @@ export const Header = () => {
           variant="outline" 
           size="sm" 
           onClick={handleSignOut}
-          className="w-full flex items-center space-x-2"
+          className="w-full flex items-center space-x-2 btn-enhanced"
         >
           <LogOut className="h-4 w-4" />
           <span>Sign Out</span>
@@ -48,11 +62,11 @@ export const Header = () => {
   );
 
   return (
-    <header className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border sticky top-0 z-50">
+    <header className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border sticky top-0 z-50 shadow-sm">
       <div className="w-full px-3 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-14 sm:h-16">
           <div className="flex items-center space-x-2 sm:space-x-3">
-            <div className="p-1.5 sm:p-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg">
+            <div className="p-1.5 sm:p-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg shadow-lg hover-glow animate-pulse-glow">
               <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
             </div>
             <div>
@@ -69,19 +83,33 @@ export const Header = () => {
             <ThemeToggle />
             {user && (
               <div className="flex items-center space-x-3">
-                <div className="flex items-center space-x-2">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">{user.email}</span>
+                <div className="flex items-center space-x-3 bg-muted/50 rounded-lg px-3 py-2">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="text-xs bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+                      {getInitials(user.email)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="hidden lg:block">
+                    <p className="text-sm font-medium">{user.email}</p>
+                    <p className="text-xs text-muted-foreground">Welcome back!</p>
+                  </div>
                 </div>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleSignOut}
-                  className="flex items-center space-x-2"
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span>Sign Out</span>
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleSignOut}
+                      className="flex items-center space-x-2 btn-enhanced"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      <span className="hidden lg:inline">Sign Out</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Sign out of your account</p>
+                  </TooltipContent>
+                </Tooltip>
               </div>
             )}
           </div>
@@ -91,7 +119,7 @@ export const Header = () => {
             <div className="md:hidden">
               <Sheet open={isOpen} onOpenChange={setIsOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="sm" className="p-2">
+                  <Button variant="ghost" size="sm" className="p-2 btn-enhanced">
                     <Menu className="h-5 w-5" />
                   </Button>
                 </SheetTrigger>

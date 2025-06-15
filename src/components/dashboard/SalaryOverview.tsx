@@ -5,6 +5,7 @@ import { useSalaryCalculations } from './salary/useSalaryCalculations';
 import { SalaryStatsCards } from './salary/SalaryStatsCards';
 import { SalaryRecordsList } from './salary/SalaryRecordsList';
 import { SalaryInsightsCards } from './salary/SalaryInsightsCards';
+import { SkeletonLoader } from '@/components/ui/skeleton-loader';
 import { format } from 'date-fns';
 
 export const SalaryOverview = () => {
@@ -74,46 +75,58 @@ export const SalaryOverview = () => {
   };
 
   if (loading) {
-    return <div className="text-center py-8">Loading...</div>;
+    return (
+      <div className="space-y-8 animate-fade-in">
+        <SkeletonLoader type="stats" />
+        <SkeletonLoader type="chart" count={2} />
+        <SkeletonLoader type="list" />
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-8">
-      <SalaryStatsCards
-        monthlyStats={monthlyStats}
-        totalEarnings={totalEarnings}
-        totalRecords={salaryRecords.length}
-        monthlyExpectedSalaries={monthlyExpectedSalaries}
-        salaryRecords={salaryRecords}
-        isSalaryDialogOpen={isSalaryDialogOpen}
-        setIsSalaryDialogOpen={setIsSalaryDialogOpen}
-        onUpdateMonthlyExpectedSalary={handleUpdateMonthlyExpectedSalary}
-      />
+    <div className="space-y-8 animate-fade-in">
+      <div className="hover-lift">
+        <SalaryStatsCards
+          monthlyStats={monthlyStats}
+          totalEarnings={totalEarnings}
+          totalRecords={salaryRecords.length}
+          monthlyExpectedSalaries={monthlyExpectedSalaries}
+          salaryRecords={salaryRecords}
+          isSalaryDialogOpen={isSalaryDialogOpen}
+          setIsSalaryDialogOpen={setIsSalaryDialogOpen}
+          onUpdateMonthlyExpectedSalary={handleUpdateMonthlyExpectedSalary}
+        />
+      </div>
 
-      <SalaryInsightsCards 
-        key={dataVersion}
-        salaryRecords={salaryRecords}
-        monthlyExpectedSalaries={monthlyExpectedSalaries}
-      />
+      <div className="hover-lift">
+        <SalaryInsightsCards 
+          key={dataVersion}
+          salaryRecords={salaryRecords}
+          monthlyExpectedSalaries={monthlyExpectedSalaries}
+        />
+      </div>
 
-      <SalaryRecordsList
-        salaryRecords={salaryRecords}
-        isDialogOpen={isDialogOpen}
-        setIsDialogOpen={setIsDialogOpen}
-        amount={amount}
-        setAmount={setAmount}
-        payPeriod={payPeriod}
-        setPayPeriod={setPayPeriod}
-        receivedDate={receivedDate}
-        setReceivedDate={setReceivedDate}
-        salaryMonth={salaryMonth}
-        setSalaryMonth={setSalaryMonth}
-        description={description}
-        setDescription={setDescription}
-        isBonus={isBonus}
-        setIsBonus={setIsBonus}
-        onAddRecord={handleAddSalaryRecord}
-      />
+      <div className="hover-lift">
+        <SalaryRecordsList
+          salaryRecords={salaryRecords}
+          isDialogOpen={isDialogOpen}
+          setIsDialogOpen={setIsDialogOpen}
+          amount={amount}
+          setAmount={setAmount}
+          payPeriod={payPeriod}
+          setPayPeriod={setPayPeriod}
+          receivedDate={receivedDate}
+          setReceivedDate={setReceivedDate}
+          salaryMonth={salaryMonth}
+          setSalaryMonth={setSalaryMonth}
+          description={description}
+          setDescription={setDescription}
+          isBonus={isBonus}
+          setIsBonus={setIsBonus}
+          onAddRecord={handleAddSalaryRecord}
+        />
+      </div>
     </div>
   );
 };

@@ -103,7 +103,7 @@
   }
 }
 
-/* Custom animations */
+/* Enhanced animations */
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -146,6 +146,36 @@
   }
 }
 
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(59, 130, 246, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.8);
+  }
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
 .animate-fade-in {
   animation: fade-in 0.6s ease-out forwards;
 }
@@ -162,45 +192,102 @@
   animation: float 3s ease-in-out infinite;
 }
 
-/* Hover animations */
-.hover-lift {
-  transition: all 0.3s ease;
+.animate-shimmer {
+  animation: shimmer 2s infinite;
 }
 
-.hover-lift:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
 }
 
-.hover-glow:hover {
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
-}
-
-/* Card animations */
-.card-hover {
-  transition: all 0.3s ease;
-  cursor: pointer;
-}
-
-.card-hover:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-}
-
-/* Gradient animations */
 .gradient-shift {
   background-size: 200% 200%;
   animation: gradient-shift 3s ease infinite;
 }
 
-@keyframes gradient-shift {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
+/* Enhanced hover animations */
+.hover-lift {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.hover-glow {
+  transition: all 0.3s ease;
+}
+
+.hover-glow:hover {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+  transform: scale(1.02);
+}
+
+/* Card animations */
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Button enhancements */
+.btn-enhanced {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-enhanced:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.btn-enhanced:active {
+  transform: translateY(0);
+}
+
+/* Skeleton loader */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200px 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.dark .skeleton {
+  background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
+  background-size: 200px 100%;
+}
+
+/* Empty state */
+.empty-state {
+  opacity: 0;
+  animation: fade-in 0.5s ease-out 0.2s forwards;
+}
+
+/* Gradient dividers */
+.gradient-divider {
+  background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.3), transparent);
+  height: 1px;
+}
+
+/* Tab transitions */
+.tab-content {
+  animation: fade-in 0.3s ease-out;
+}
+
+/* Progress rings */
+.progress-ring {
+  transition: stroke-dasharray 0.3s ease-in-out;
+}
+
+/* Financial health bar */
+.health-bar {
+  background: linear-gradient(90deg, #ef4444 0%, #f59e0b 33%, #10b981 66%, #059669 100%);
+  height: 4px;
+  border-radius: 2px;
 }
