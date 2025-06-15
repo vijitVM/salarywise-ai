@@ -1,7 +1,7 @@
 
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { LogOut, User, TrendingUp, Menu, Search } from 'lucide-react';
+import { LogOut, TrendingUp, Menu } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { DataExportDialog } from '@/components/export/DataExportDialog';
 import { useSalaryData } from '@/components/dashboard/salary/useSalaryData';
@@ -11,11 +11,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
-interface HeaderProps {
-  onSearchOpen?: () => void;
-}
-
-export const Header = ({ onSearchOpen }: HeaderProps) => {
+export const Header = () => {
   const { user, signOut } = useAuth();
   const { salaryRecords, monthlyExpectedSalaries } = useSalaryData();
   const { transactions } = useTransactionData();
@@ -50,20 +46,6 @@ export const Header = ({ onSearchOpen }: HeaderProps) => {
       </div>
       
       <div className="space-y-3">
-        {onSearchOpen && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              onSearchOpen();
-              setIsOpen(false);
-            }}
-            className="w-full flex items-center space-x-2 btn-enhanced"
-          >
-            <Search className="h-4 w-4" />
-            <span>Search</span>
-          </Button>
-        )}
         <DataExportDialog data={exportData} />
         <ThemeToggle />
         <Button 
@@ -97,19 +79,6 @@ export const Header = ({ onSearchOpen }: HeaderProps) => {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-4 ml-auto">
-            {onSearchOpen && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" size="sm" onClick={onSearchOpen} className="btn-enhanced">
-                    <Search className="h-4 w-4" />
-                    <span className="hidden lg:inline ml-2">Search</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Search your financial data</p>
-                </TooltipContent>
-              </Tooltip>
-            )}
             <DataExportDialog data={exportData} />
             <ThemeToggle />
             {user && (

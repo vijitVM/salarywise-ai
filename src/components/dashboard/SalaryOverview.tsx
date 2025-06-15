@@ -13,7 +13,7 @@ interface SalaryOverviewRef {
 
 export const SalaryOverview = forwardRef<SalaryOverviewRef>((props, ref) => {
   const { salaryRecords, profile, monthlyExpectedSalaries, loading, addSalaryRecord, updateMonthlyExpectedSalary } = useSalaryData();
-  const { monthlyStats, totalEarnings, totalRecords } = useSalaryCalculations(salaryRecords, profile, monthlyExpectedSalaries);
+  const { monthlyStats, totalEarnings } = useSalaryCalculations(salaryRecords, profile, monthlyExpectedSalaries);
   const { toast } = useToast();
 
   // Form states
@@ -95,7 +95,7 @@ export const SalaryOverview = forwardRef<SalaryOverviewRef>((props, ref) => {
       <SalaryStatsCards
         monthlyStats={monthlyStats}
         totalEarnings={totalEarnings}
-        totalRecords={totalRecords}
+        totalRecords={salaryRecords.length}
         monthlyExpectedSalaries={monthlyExpectedSalaries}
         salaryRecords={salaryRecords}
         isSalaryDialogOpen={isSalaryDialogOpen}

@@ -8,15 +8,13 @@ import { Header } from '@/components/layout/Header';
 import { FloatingChatWidget } from '@/components/ai/FloatingChatWidget';
 import { PersonalizedGreeting } from './PersonalizedGreeting';
 import { FinancialHealthBar } from './FinancialHealthBar';
-import { GlobalSearch } from '@/components/search/GlobalSearch';
 import { FloatingActionButton } from '@/components/ui/floating-action-button';
 import { SmartInsights } from '@/components/insights/SmartInsights';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useState, useRef } from 'react';
-import { DollarSign, Target, TrendingUp, Search } from 'lucide-react';
+import { DollarSign, Target, TrendingUp } from 'lucide-react';
 
 export const Dashboard = () => {
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   
   // References to child components for triggering actions
@@ -89,7 +87,7 @@ export const Dashboard = () => {
   return (
     <TooltipProvider>
       <div className="min-h-screen bg-background">
-        <Header onSearchOpen={() => setIsSearchOpen(true)} />
+        <Header />
         <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-6 max-w-7xl">
           <div className="space-y-4 sm:space-y-6">
             <PersonalizedGreeting />
@@ -147,7 +145,6 @@ export const Dashboard = () => {
           </div>
         </main>
         
-        <GlobalSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
         <FloatingActionButton actions={fabActions} />
         <FloatingChatWidget />
       </div>
