@@ -27,9 +27,8 @@ export const TransactionTracker = forwardRef<TransactionTrackerRef>((props, ref)
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   
-  // Filter states
+  // Filter states - only month now
   const [selectedMonth, setSelectedMonth] = useState<string>('all');
-  const [selectedYear, setSelectedYear] = useState<string>('all');
 
   // Expose openAddDialog method to parent
   useImperativeHandle(ref, () => ({
@@ -38,33 +37,23 @@ export const TransactionTracker = forwardRef<TransactionTrackerRef>((props, ref)
     }
   }));
 
-  // Get unique years and months from transactions for filter options
+  // Get unique months from transactions for filter options
   const filterOptions = useMemo(() => {
-    const years = new Set<string>();
     const months = new Set<string>();
     
     transactions.forEach(transaction => {
       const transactionDate = parseISO(transaction.date);
-      years.add(format(transactionDate, 'yyyy'));
       months.add(format(transactionDate, 'yyyy-MM'));
     });
 
     return {
-      years: Array.from(years).sort((a, b) => b.localeCompare(a)),
       months: Array.from(months).sort((a, b) => b.localeCompare(a))
     };
   }, [transactions]);
 
-  // Filter transactions based on selected month/year
+  // Filter transactions based on selected month
   const filteredTransactions = useMemo(() => {
     let filtered = transactions;
-
-    if (selectedYear !== 'all') {
-      filtered = filtered.filter(transaction => {
-        const transactionDate = parseISO(transaction.date);
-        return format(transactionDate, 'yyyy') === selectedYear;
-      });
-    }
 
     if (selectedMonth !== 'all') {
       filtered = filtered.filter(transaction => {
@@ -74,7 +63,7 @@ export const TransactionTracker = forwardRef<TransactionTrackerRef>((props, ref)
     }
 
     return filtered;
-  }, [transactions, selectedMonth, selectedYear]);
+  }, [transactions, selectedMonth]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -173,7 +162,7 @@ export const TransactionTracker = forwardRef<TransactionTrackerRef>((props, ref)
           <CardContent>
             <div className="text-2xl font-bold text-green-600">₹{totalIncome.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              {selectedMonth !== 'all' || selectedYear !== 'all' ? 'Filtered period' : '+₹' + (totalIncome * 0.12).toLocaleString() + ' from last month'}
+              {selectedMonth !== 'all' ? 'Filtered period' : '+₹' + (totalIncome * 0.12).toLocaleString() + ' from last month'}
             </p>
           </CardContent>
         </Card>
@@ -186,7 +175,7 @@ export const TransactionTracker = forwardRef<TransactionTrackerRef>((props, ref)
           <CardContent>
             <div className="text-2xl font-bold text-red-600">₹{totalExpenses.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              {selectedMonth !== 'all' || selectedYear !== 'all' ? 'Filtered period' : '+₹' + (totalExpenses * 0.08).toLocaleString() + ' from last month'}
+              {selectedMonth !== 'all' ? 'Filtered period' : '+₹' + (totalExpenses * 0.08).toLocaleString() + ' from last month'}
             </p>
           </CardContent>
         </Card>
@@ -201,7 +190,7 @@ export const TransactionTracker = forwardRef<TransactionTrackerRef>((props, ref)
               ₹{netBalance.toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground">
-              {netBalance >= 0 ? 'Surplus' : 'Deficit'} {selectedMonth !== 'all' || selectedYear !== 'all' ? 'for filtered period' : 'this month'}
+              {netBalance >= 0 ? 'Surplus' : 'Deficit'} {selectedMonth !== 'all' ? 'for filtered period' : 'this month'}
             </p>
           </CardContent>
         </Card>
@@ -214,7 +203,7 @@ export const TransactionTracker = forwardRef<TransactionTrackerRef>((props, ref)
               <CardTitle>Transactions</CardTitle>
               <CardDescription>
                 {filteredTransactions.length} transactions found
-                {selectedMonth !== 'all' || selectedYear !== 'all' ? ' (filtered)' : ''}
+                {selectedMonth !== 'all' ? ' (filtered)' : ''}
               </CardDescription>
             </div>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -296,7 +285,6 @@ export const TransactionTracker = forwardRef<TransactionTrackerRef>((props, ref)
                     currentDescription={description}
                     currentAmount={amount}
                     currentType={type}
-                    addTransaction={addTransaction}
                   />
 
                   <Button type="submit" className="w-full">
@@ -308,33 +296,17 @@ export const TransactionTracker = forwardRef<TransactionTrackerRef>((props, ref)
           </div>
         </CardHeader>
         <CardContent>
-          {/* Filter Controls */}
+          {/* Filter Controls - Only Month */}
           <div className="flex flex-col sm:flex-row gap-4 mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Filters:</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Filter by Month:</span>
             </div>
             
             <div className="flex flex-col sm:flex-row gap-2">
               <div className="space-y-1">
-                <Label htmlFor="year-filter" className="text-xs">Year</Label>
-                <Select value={selectedYear} onValueChange={setSelectedYear}>
-                  <SelectTrigger className="w-full sm:w-32">
-                    <SelectValue placeholder="All Years" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Years</SelectItem>
-                    {filterOptions.years.map((year) => (
-                      <SelectItem key={year} value={year}>{year}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="month-filter" className="text-xs">Month</Label>
                 <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                  <SelectTrigger className="w-full sm:w-40">
+                  <SelectTrigger className="w-full sm:w-48">
                     <SelectValue placeholder="All Months" />
                   </SelectTrigger>
                   <SelectContent>
@@ -353,17 +325,14 @@ export const TransactionTracker = forwardRef<TransactionTrackerRef>((props, ref)
               </div>
             </div>
 
-            {(selectedMonth !== 'all' || selectedYear !== 'all') && (
+            {selectedMonth !== 'all' && (
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={() => {
-                  setSelectedMonth('all');
-                  setSelectedYear('all');
-                }}
+                onClick={() => setSelectedMonth('all')}
                 className="self-end sm:self-center"
               >
-                Clear Filters
+                Clear Filter
               </Button>
             )}
           </div>
@@ -372,7 +341,7 @@ export const TransactionTracker = forwardRef<TransactionTrackerRef>((props, ref)
             <div className="text-center py-8 text-gray-500">
               {transactions.length === 0 
                 ? "No transactions yet. Add your first transaction to get started!"
-                : "No transactions found for the selected filters. Try adjusting your filter criteria."
+                : "No transactions found for the selected filter. Try adjusting your filter criteria."
               }
             </div>
           ) : (
